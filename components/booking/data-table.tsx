@@ -173,31 +173,48 @@ export function DataTable({ data: initialData }: { data: z.infer<typeof schema>[
     <div className="flex flex-col gap-4 mx-6">
       {/* Customize Columns & Search Section */}
       <div className="flex items-center justify-between mb-2">
-        <div className="flex justify-between items-center w-[300px]">
-          <input
-            type="text"
-            placeholder="Search..."
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="border rounded px-2 py-1 w-full focus:outline-none focus:ring focus:ring-blue-300"
-          />
-        </div>
+  <div className="flex justify-between items-center w-[300px]">
+    <input
+      type="text"
+      placeholder="Search..."
+      value={globalFilter}
+      onChange={(e) => setGlobalFilter(e.target.value)}
+      className="border rounded px-2 py-1 w-full focus:outline-none focus:ring focus:ring-blue-300"
+    />
+  </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm"><IconLayoutColumns /><span className="hidden lg:inline">Customize Columns</span></Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                {table.getAllColumns().filter(c => c.getCanHide()).map(c => (
-                  <DropdownMenuCheckboxItem key={c.id} checked={c.getIsVisible()} onCheckedChange={v => c.toggleVisibility(!!v)}>{c.id}</DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </div>
+  <div className="flex items-center gap-2">
+    {/* Add Booking Button */}
+    <Button size="sm" className="flex items-center gap-1">
+      <IconPlus className="w-4 h-4" />
+      Add Booking
+    </Button>
+
+    {/* Customize Columns */}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="flex items-center gap-1">
+          <IconLayoutColumns className="w-4 h-4" />
+          <span className="hidden lg:inline">Customize Columns</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        {table.getAllColumns()
+          .filter(c => c.getCanHide())
+          .map(c => (
+            <DropdownMenuCheckboxItem
+              key={c.id}
+              checked={c.getIsVisible()}
+              onCheckedChange={v => c.toggleVisibility(!!v)}
+            >
+              {c.id}
+            </DropdownMenuCheckboxItem>
+          ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </div>
+</div>
+
 
       {/* Table */}
       <div className="overflow-hidden rounded-lg border">
