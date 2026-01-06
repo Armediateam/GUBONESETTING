@@ -51,13 +51,16 @@ export default function MultiStepBookingForm() {
   const [step, setStep] = useState(1); // current step: 1, 2, 3
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, files } = e.target;
-    if (name === "paymentProof" && files) {
-      setFormData({ ...formData, paymentProof: files[0] });
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
-  };
+  const { name, value } = e.target;
+
+  // Cek apakah ini input file
+  if (name === "paymentProof" && e.target instanceof HTMLInputElement && e.target.files) {
+    setFormData({ ...formData, paymentProof: e.target.files[0] });
+  } else {
+    setFormData({ ...formData, [name]: value });
+  }
+};
+
 
   const handleSelectChange = (name: string, value: string) => {
     setFormData({ ...formData, [name]: value });
