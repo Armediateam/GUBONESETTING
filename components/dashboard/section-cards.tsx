@@ -20,22 +20,19 @@ export function SectionCards() {
   return (
     <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
       {/* Today’s Bookings */}
-      <Card>
+      <Card className="bg-transparent">
         <CardHeader>
-          <CardDescription>Today’s Bookings</CardDescription>
-          <CardTitle className="text-3xl font-semibold tabular-nums">
+          <CardTitle className="text-4xl font-semibold tabular-nums">
             38
           </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp className="size-4" />
-              +8%
-            </Badge>
+           <CardAction className="flex items-center gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+            <IconTrendingUp className="size-4" />
+            +8%
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="flex gap-2 font-medium">
-            Higher demand today <IconCalendarCheck className="size-4" />
+            Today’s Bookings
           </div>
           <div className="text-muted-foreground">
             Compared to yesterday
@@ -44,73 +41,64 @@ export function SectionCards() {
       </Card>
 
       {/* Total Revenue */}
-      <Card>
+      <Card className="bg-transparent">
         <CardHeader>
-          <CardDescription>Total Revenue</CardDescription>
-          <CardTitle className="text-3xl font-semibold tabular-nums">
+          <CardTitle className="text-4xl font-semibold tabular-nums">
             $12,450
           </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp className="size-4" />
-              +12%
-            </Badge>
+          <CardAction className="flex items-center gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+            <IconTrendingUp className="size-4" />
+            +12%
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="flex gap-2 font-medium">
-            Revenue increased <IconCash className="size-4" />
+            Total Revenue
           </div>
           <div className="text-muted-foreground">
-            From massage & spa services
+            Compared to yesterday
           </div>
         </CardFooter>
       </Card>
 
       {/* Active Therapists */}
-      <Card>
+      <Card className="bg-transparent">
         <CardHeader>
-          <CardDescription>Active Therapists</CardDescription>
-          <CardTitle className="text-3xl font-semibold tabular-nums">
+          <CardTitle className="text-4xl font-semibold tabular-nums">
             12
           </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp className="size-4" />
-              +2
-            </Badge>
+           <CardAction className="flex items-center gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+            <IconTrendingUp className="size-4" />
+            +2
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="flex gap-2 font-medium">
-            Ready to serve <IconUserHeart className="size-4" />
+            Active Doctors
           </div>
           <div className="text-muted-foreground">
-            On duty today
+            Compared to yesterday
           </div>
         </CardFooter>
       </Card>
 
       {/* Cancellation Rate */}
-      <Card>
+      <Card className="bg-transparent">
         <CardHeader>
-          <CardDescription>Cancellation Rate</CardDescription>
-          <CardTitle className="text-3xl font-semibold tabular-nums">
+          <CardTitle className="text-4xl font-semibold tabular-nums">
             3.2%
           </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingDown className="size-4" />
-              -1.1%
-            </Badge>
+          <CardAction className="flex items-center gap-1 text-sm font-medium text-rose-600 dark:text-rose-400">
+            <IconTrendingDown className="size-4" />
+            -1.1%
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="flex gap-2 font-medium">
-            More stable bookings <IconTrendingDown className="size-4" />
+            Cancellation Rate
           </div>
           <div className="text-muted-foreground">
-            Fewer cancellations
+            Compared to yesterday
           </div>
         </CardFooter>
       </Card>

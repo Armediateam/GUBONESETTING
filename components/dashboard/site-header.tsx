@@ -1,48 +1,97 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { Clock } from "lucide-react"
+
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Switch } from "@/components/ui/switch"
-import { Sun, Moon } from "lucide-react"
 
 export function SiteHeader() {
-  const [isDark, setIsDark] = useState(false)
+  const pathname = usePathname()
+  const [time, setTime] = useState(new Date())
+  const [isClient, setIsClient] = useState(false)
 
-  // Initialize theme from localStorage or system preference
+  // Set `isClient` to true after the component mounts on the client
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme")
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
-      document.documentElement.classList.add("dark")
-      setIsDark(true)
-    }
+    setIsClient(true)
+    const interval = setInterval(() => {
+      setTime(new Date())
+    }, 1000)
+
+    return () => clearInterval(interval)
   }, [])
 
-  const toggleTheme = (checked: boolean) => {
-    setIsDark(checked)
-    if (checked) {
-      document.documentElement.classList.add("dark")
-      localStorage.setItem("theme", "dark")
-    } else {
-      document.documentElement.classList.remove("dark")
-      localStorage.setItem("theme", "light")
-    }
-  }
+  // ===== Breadcrumb Logic =====
+  const segments = pathname
+    .split("/")
+    .filter(Boolean)
+    .filter((segment) => segment !== "dashboard")
 
   return (
-    <header className="flex h-[var(--header-height)] shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-[var(--header-height)]">
-      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+    <header className="flex h-[var(--header-height)] items-center border-b">
+      <div className="flex w-full items-center gap-2 px-4 lg:px-6">
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
-        <h1 className="text-base font-medium">Documents</h1>
-        <div className="ml-auto flex items-center gap-2">
-          {/* Dark/Light Switch */}
-          <div className="flex items-center gap-2">
-            <Sun className="w-4 h-4" />
-            <Switch checked={isDark} onCheckedChange={toggleTheme} />
-            <Moon className="w-4 h-4" />
+
+        {/* ===== Breadcrumb ===== */}
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href="/dashboard">Dashboard</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+
+            {segments.map((segment, index) => {
+              const href =
+                "/dashboard/" + segments.slice(0, index + 1).join("/")
+              const isLast = index === segments.length - 1
+
+              return [
+                <BreadcrumbSeparator key={`${href}-sep`} />,
+                <BreadcrumbItem key={href}>
+                  {isLast ? (
+                    <BreadcrumbPage className="capitalize">
+                      {segment.replace(/-/g, " ")}
+                    </BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink asChild>
+                      <Link href={href} className="capitalize">
+                        {segment.replace(/-/g, " ")}
+                      </Link>
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>,
+              ]
+            })}
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        {/* ===== Right Clock ===== */}
+        <div className="ml-auto">
+          <div className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            {/* Only render the time if we're on the client */}
+            {isClient && (
+              <span className="tabular-nums">
+                {time
+                  ? time.toLocaleTimeString("id-ID", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })
+                  : "--:--:--"}
+              </span>
+            )}
           </div>
         </div>
       </div>

@@ -10,17 +10,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
-export function LoginForm({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -30,8 +23,8 @@ export function LoginForm({
     setLoading(true)
 
     const formData = new FormData(e.currentTarget)
-    const email = formData.get("email")
-    const password = formData.get("password")
+    const email = formData.get("email")?.toString() || ""
+    const password = formData.get("password")?.toString() || ""
 
     try {
       const res = await fetch("/api/auth/login", {
@@ -43,11 +36,11 @@ export function LoginForm({
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.message || "Login gagal")
+        setError(data.error || "Login gagal")
       } else {
-        // 🔐 simpan JWT
+        // 🔐 simpan JWT di localStorage
         localStorage.setItem("token", data.token)
-        // redirect
+        // redirect ke dashboard
         window.location.href = "/dashboard"
       }
     } catch (err) {
@@ -63,7 +56,7 @@ export function LoginForm({
         <CardHeader>
           <CardTitle>Login to your account</CardTitle>
           <CardDescription>
-            Enter your email below to login to your account
+            Masukkan email dan password untuk login admin
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -71,27 +64,15 @@ export function LoginForm({
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                />
+                <Input id="email" name="email" type="email" required />
               </Field>
 
               <Field>
                 <FieldLabel htmlFor="password">Password</FieldLabel>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                />
+                <Input id="password" name="password" type="password" required />
               </Field>
 
-              {error && (
-                <p className="text-sm text-red-500">{error}</p>
-              )}
+              {error && <p className="text-sm text-red-500">{error}</p>}
 
               <Field>
                 <Button type="submit" disabled={loading}>

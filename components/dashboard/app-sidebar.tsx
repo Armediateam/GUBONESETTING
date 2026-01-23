@@ -18,10 +18,6 @@ import {
   IconClock,
 } from "@tabler/icons-react"
 
-import { NavDocuments } from "./nav-documents"
-import { NavMain } from "./nav-main"
-import { NavSecondary } from "./nav-secondary"
-import { NavUser } from "./nav-user"
 
 import {
   Sidebar,
@@ -32,6 +28,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { Button } from "../ui/button"
+import { NavMain } from "./nav-main"
+import { NavUser } from "./nav-user"
 
 type User = {
   name: string
@@ -57,8 +56,8 @@ const data = {
     icon: IconClock, // diganti icon jam supaya beda
   },
     {
-      title: "Therapists",
-      url: "/dashboard/therapists",
+      title: "Doctors",
+      url: "/dashboard/doctors",
       icon: IconUserHeart,
     }
   ],
@@ -102,10 +101,11 @@ const data = {
   ],
 }
 
+// AppSidebar.tsx
 export function AppSidebar({
-  user,
+  user, // Menerima user sebagai prop
   ...props
-}: React.ComponentProps<typeof Sidebar> & { user: User }) {
+}: React.ComponentProps<typeof Sidebar> & { user: { name: string; email: string; avatar: string } }) {
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       {/* HEADER */}
@@ -115,9 +115,7 @@ export function AppSidebar({
             <SidebarMenuButton asChild className="!p-1.5">
               <Link href="/">
                 <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">
-                  Yen 2 Yen
-                </span>
+                <span className="text-base font-semibold">Yen 2 Yen</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -127,15 +125,14 @@ export function AppSidebar({
       {/* CONTENT */}
       <SidebarContent>
         <NavMain items={data.navMain} />
-        {/* <NavDocuments items={data.documents} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
       </SidebarContent>
 
       {/* FOOTER */}
       <SidebarFooter>
-        <NavUser />
+        <NavUser user={user} /> {/* Meneruskan user ke NavUser */}
       </SidebarFooter>
-
     </Sidebar>
   )
 }
+
+

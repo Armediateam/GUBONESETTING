@@ -79,11 +79,6 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.702 0.183 293.541);
-  --card-color-1: oklch(0.95 0.05 280);  /* light purple */
-  --card-color-2: oklch(0.93 0.07 220);  /* light blue */
-  --card-color-3: oklch(0.95 0.05 330);  /* light pink */
-  --card-color-4: oklch(0.93 0.08 180);  /* light teal */
-  --card-color-5: oklch(0.92 0.06 40);   /* light yellow */
 }
 
 .dark {
@@ -118,12 +113,8 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.38 0.189 293.745);
-  --card-color-1: oklch(0.25 0.05 280);  /* dark purple */
-  --card-color-2: oklch(0.28 0.07 220);  /* dark blue */
-  --card-color-3: oklch(0.27 0.05 330);  /* dark pink */
-  --card-color-4: oklch(0.30 0.08 180);  /* dark teal */
-  --card-color-5: oklch(0.32 0.06 40);   /* dark yellow */
 }
+
 
 
 @layer base {

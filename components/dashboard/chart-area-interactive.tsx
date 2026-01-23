@@ -71,7 +71,7 @@ export function ChartAreaInteractive() {
   )
 
   return (
-    <Card className="@container/card">
+    <Card className="bg-transparent">
       <CardHeader>
         <CardTitle>Booking Trends</CardTitle>
         <CardDescription>
