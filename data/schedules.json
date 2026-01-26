@@ -1,0 +1,690 @@
+[
+  {
+    "timezone": "Asia/Jakarta",
+    "weekly": {
+      "mon": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "tue": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "wed": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "thu": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "fri": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "sat": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "10:00",
+            "end": "14:00"
+          }
+        ]
+      },
+      "sun": {
+        "enabled": false,
+        "ranges": []
+      }
+    },
+    "overrides": [
+      {
+        "date": "2026-01-29",
+        "closed": true,
+        "ranges": []
+      },
+      {
+        "date": "2026-02-05",
+        "closed": false,
+        "ranges": [
+          {
+            "start": "12:00",
+            "end": "18:00"
+          }
+        ]
+      }
+    ],
+    "slotDurationMins": 30,
+    "bufferMins": 10,
+    "minNoticeHours": 2,
+    "maxFutureDays": 30,
+    "maxBookingsPerDay": null,
+    "locationId": "f0df8ed6-793a-4773-bc7c-34b677a896de"
+  },
+  {
+    "timezone": "Asia/Jakarta",
+    "weekly": {
+      "mon": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "tue": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "wed": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "thu": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "fri": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "sat": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "10:00",
+            "end": "14:00"
+          }
+        ]
+      },
+      "sun": {
+        "enabled": false,
+        "ranges": []
+      }
+    },
+    "overrides": [
+      {
+        "date": "2026-01-30",
+        "closed": true,
+        "ranges": []
+      },
+      {
+        "date": "2026-02-06",
+        "closed": false,
+        "ranges": [
+          {
+            "start": "12:00",
+            "end": "18:00"
+          }
+        ]
+      }
+    ],
+    "slotDurationMins": 30,
+    "bufferMins": 10,
+    "minNoticeHours": 2,
+    "maxFutureDays": 30,
+    "maxBookingsPerDay": null,
+    "locationId": "3f245146-b944-4651-bd74-82f821670565"
+  },
+  {
+    "timezone": "Asia/Jakarta",
+    "weekly": {
+      "mon": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "tue": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "wed": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "thu": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "fri": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "sat": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "10:00",
+            "end": "14:00"
+          }
+        ]
+      },
+      "sun": {
+        "enabled": false,
+        "ranges": []
+      }
+    },
+    "overrides": [
+      {
+        "date": "2026-01-31",
+        "closed": true,
+        "ranges": []
+      },
+      {
+        "date": "2026-02-07",
+        "closed": false,
+        "ranges": [
+          {
+            "start": "12:00",
+            "end": "18:00"
+          }
+        ]
+      }
+    ],
+    "slotDurationMins": 30,
+    "bufferMins": 10,
+    "minNoticeHours": 2,
+    "maxFutureDays": 30,
+    "maxBookingsPerDay": null,
+    "locationId": "f15b8317-3787-4575-9b18-2b3bd32c87ce"
+  },
+  {
+    "timezone": "Asia/Jakarta",
+    "weekly": {
+      "mon": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "tue": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "wed": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "thu": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "fri": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "sat": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "10:00",
+            "end": "14:00"
+          }
+        ]
+      },
+      "sun": {
+        "enabled": false,
+        "ranges": []
+      }
+    },
+    "overrides": [
+      {
+        "date": "2026-02-01",
+        "closed": true,
+        "ranges": []
+      },
+      {
+        "date": "2026-02-08",
+        "closed": false,
+        "ranges": [
+          {
+            "start": "12:00",
+            "end": "18:00"
+          }
+        ]
+      }
+    ],
+    "slotDurationMins": 30,
+    "bufferMins": 10,
+    "minNoticeHours": 2,
+    "maxFutureDays": 30,
+    "maxBookingsPerDay": null,
+    "locationId": "47f7fd7d-fd17-470f-9874-ccf96ba1c114"
+  },
+  {
+    "timezone": "Asia/Jakarta",
+    "weekly": {
+      "mon": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "tue": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "wed": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "thu": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "fri": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "sat": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "10:00",
+            "end": "14:00"
+          }
+        ]
+      },
+      "sun": {
+        "enabled": false,
+        "ranges": []
+      }
+    },
+    "overrides": [
+      {
+        "date": "2026-02-02",
+        "closed": true,
+        "ranges": []
+      },
+      {
+        "date": "2026-02-09",
+        "closed": false,
+        "ranges": [
+          {
+            "start": "12:00",
+            "end": "18:00"
+          }
+        ]
+      }
+    ],
+    "slotDurationMins": 30,
+    "bufferMins": 10,
+    "minNoticeHours": 2,
+    "maxFutureDays": 30,
+    "maxBookingsPerDay": null,
+    "locationId": "bd466924-930b-45bd-add5-4a6ff6c56fc5"
+  },
+  {
+    "timezone": "Asia/Jakarta",
+    "weekly": {
+      "mon": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "tue": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "wed": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "thu": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "fri": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "sat": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "10:00",
+            "end": "14:00"
+          }
+        ]
+      },
+      "sun": {
+        "enabled": false,
+        "ranges": []
+      }
+    },
+    "overrides": [
+      {
+        "date": "2026-02-03",
+        "closed": true,
+        "ranges": []
+      },
+      {
+        "date": "2026-02-10",
+        "closed": false,
+        "ranges": [
+          {
+            "start": "12:00",
+            "end": "18:00"
+          }
+        ]
+      }
+    ],
+    "slotDurationMins": 30,
+    "bufferMins": 10,
+    "minNoticeHours": 2,
+    "maxFutureDays": 30,
+    "maxBookingsPerDay": null,
+    "locationId": "872c0afe-881e-4bcd-b222-37b4db44b6a4"
+  },
+  {
+    "timezone": "Asia/Jakarta",
+    "weekly": {
+      "mon": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "tue": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "wed": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "thu": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "fri": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "sat": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "10:00",
+            "end": "14:00"
+          }
+        ]
+      },
+      "sun": {
+        "enabled": false,
+        "ranges": []
+      }
+    },
+    "overrides": [
+      {
+        "date": "2026-02-04",
+        "closed": true,
+        "ranges": []
+      },
+      {
+        "date": "2026-02-11",
+        "closed": false,
+        "ranges": [
+          {
+            "start": "12:00",
+            "end": "18:00"
+          }
+        ]
+      }
+    ],
+    "slotDurationMins": 30,
+    "bufferMins": 10,
+    "minNoticeHours": 2,
+    "maxFutureDays": 30,
+    "maxBookingsPerDay": null,
+    "locationId": "97dc27fd-658a-4d11-adc9-bafd1293d12e"
+  },
+  {
+    "timezone": "Asia/Jakarta",
+    "weekly": {
+      "mon": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "tue": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "wed": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "thu": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "fri": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ]
+      },
+      "sat": {
+        "enabled": true,
+        "ranges": [
+          {
+            "start": "10:00",
+            "end": "14:00"
+          }
+        ]
+      },
+      "sun": {
+        "enabled": false,
+        "ranges": []
+      }
+    },
+    "overrides": [
+      {
+        "date": "2026-02-05",
+        "closed": true,
+        "ranges": []
+      },
+      {
+        "date": "2026-02-12",
+        "closed": false,
+        "ranges": [
+          {
+            "start": "12:00",
+            "end": "18:00"
+          }
+        ]
+      }
+    ],
+    "slotDurationMins": 30,
+    "bufferMins": 10,
+    "minNoticeHours": 2,
+    "maxFutureDays": 30,
+    "maxBookingsPerDay": null,
+    "locationId": "ec15005a-9824-4156-bc66-f55be3409999"
+  }
+]

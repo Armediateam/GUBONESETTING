@@ -74,7 +74,7 @@ export function SectionCards() {
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="flex gap-2 font-medium">
-            Active Doctors
+            Active Therapists
           </div>
           <div className="text-muted-foreground">
             Compared to yesterday

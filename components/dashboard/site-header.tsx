@@ -15,15 +15,13 @@ import {
 } from "@/components/ui/breadcrumb"
 
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { LocationSwitcher } from "@/components/locations/location-switcher"
 
 export function SiteHeader() {
   const pathname = usePathname()
   const [time, setTime] = useState(new Date())
-  const [isClient, setIsClient] = useState(false)
 
-  // Set `isClient` to true after the component mounts on the client
   useEffect(() => {
-    setIsClient(true)
     const interval = setInterval(() => {
       setTime(new Date())
     }, 1000)
@@ -47,13 +45,12 @@ export function SiteHeader() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link href="/dashboard">Dashboard</Link>
+                <Link href="/">Dashboard</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
 
             {segments.map((segment, index) => {
-              const href =
-                "/dashboard/" + segments.slice(0, index + 1).join("/")
+              const href = "/" + segments.slice(0, index + 1).join("/")
               const isLast = index === segments.length - 1
 
               return [
@@ -76,22 +73,18 @@ export function SiteHeader() {
           </BreadcrumbList>
         </Breadcrumb>
 
-        {/* ===== Right Clock ===== */}
-        <div className="ml-auto">
-          <div className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium">
+        {/* ===== Right Area ===== */}
+        <div className="ml-auto flex items-center gap-3">
+          <LocationSwitcher />
+          <div className="flex items-center gap-2 px-2 py-1.5 text-sm font-medium">
             <Clock className="h-4 w-4 text-muted-foreground" />
-            {/* Only render the time if we're on the client */}
-            {isClient && (
-              <span className="tabular-nums">
-                {time
-                  ? time.toLocaleTimeString("id-ID", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit",
-                    })
-                  : "--:--:--"}
-              </span>
-            )}
+            <span className="tabular-nums">
+              {time.toLocaleTimeString("id-ID", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })}
+            </span>
           </div>
         </div>
       </div>

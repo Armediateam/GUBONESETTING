@@ -1,0 +1,247 @@
+[
+  {
+    "id": "c6541d67-1044-41cf-bbf4-5683349c453d",
+    "fullName": "Ajisaka Kamandanu",
+    "phone": "08979111521",
+    "email": "thisismeaji20@gmail.com",
+    "gender": "Laki Laki",
+    "dateOfBirth": "2026-01-06",
+    "address": "Jl Slamet riyadi",
+    "createdAt": "2026-01-26T02:58:16.522Z",
+    "updatedAt": "2026-01-26T02:58:16.522Z"
+  },
+  {
+    "id": "7e20d503-ef28-404e-9a76-e0658bf7f522",
+    "fullName": "Karina Putra",
+    "phone": "08573933287",
+    "gender": "Perempuan",
+    "dateOfBirth": "2000-06-07",
+    "address": "Jl. Azizah No. 90",
+    "createdAt": "2025-11-27T03:47:45.057Z",
+    "updatedAt": "2025-11-28T03:47:45.057Z"
+  },
+  {
+    "id": "ee88b2de-92c6-4d79-918f-25a1c231f20d",
+    "fullName": "Hafiz Saputra",
+    "phone": "08649558808",
+    "gender": "Laki-laki",
+    "dateOfBirth": "2000-01-17",
+    "address": "Jl. Adriansyah No. 33",
+    "createdAt": "2025-12-12T03:47:45.057Z",
+    "updatedAt": "2025-12-18T03:47:45.057Z"
+  },
+  {
+    "id": "dc5ea5f6-8ed7-4a92-8d5e-42565bab3d44",
+    "fullName": "Bima Saputra",
+    "phone": "08124411248",
+    "gender": "Perempuan",
+    "dateOfBirth": "1995-10-09",
+    "address": "Jl. Siregar No. 5",
+    "createdAt": "2025-11-17T03:47:45.057Z",
+    "updatedAt": "2025-11-22T03:47:45.057Z"
+  },
+  {
+    "id": "0ae37b47-213c-4263-adf4-40a2b27aa4ed",
+    "fullName": "Bima Kusuma",
+    "phone": "08681124964",
+    "gender": "Laki-laki",
+    "dateOfBirth": "1999-11-15",
+    "address": "Jl. Saputra No. 35",
+    "createdAt": "2025-12-04T03:47:45.057Z",
+    "updatedAt": "2025-12-06T03:47:45.057Z"
+  },
+  {
+    "id": "5de780a0-bf0e-487f-a149-df8313315327",
+    "fullName": "Hafiz Wijaya",
+    "phone": "08723779304",
+    "email": "hafiz.wijaya@mail.com",
+    "gender": "Laki-laki",
+    "dateOfBirth": "2002-06-27",
+    "address": "Jl. Wijaya No. 14",
+    "createdAt": "2025-11-28T03:47:45.057Z",
+    "updatedAt": "2025-12-04T03:47:45.057Z"
+  },
+  {
+    "id": "049de0bc-02cd-4717-84e6-128ff9be8fce",
+    "fullName": "Alya Santoso",
+    "phone": "08909602175",
+    "gender": "Perempuan",
+    "dateOfBirth": "2002-04-20",
+    "address": "Jl. Saputra No. 63",
+    "createdAt": "2025-12-14T03:47:45.057Z",
+    "updatedAt": "2025-12-20T03:47:45.057Z"
+  },
+  {
+    "id": "45cd2c39-58b6-4daa-819d-80bfa2b5a92d",
+    "fullName": "Umar Wijaya",
+    "phone": "08924508148",
+    "email": "umar.wijaya@mail.com",
+    "gender": "Perempuan",
+    "dateOfBirth": "1993-08-10",
+    "address": "Jl. Gunawan No. 36",
+    "createdAt": "2025-10-29T03:47:45.057Z",
+    "updatedAt": "2025-11-03T03:47:45.057Z"
+  },
+  {
+    "id": "9fe22309-a8e9-4b2c-8643-16dfcc858ceb",
+    "fullName": "Karina Putra",
+    "phone": "08901178317",
+    "email": "karina.putra@mail.com",
+    "gender": "Perempuan",
+    "dateOfBirth": "1992-02-20",
+    "address": "Jl. Wibowo No. 95",
+    "createdAt": "2025-11-25T03:47:45.057Z",
+    "updatedAt": "2025-12-04T03:47:45.057Z"
+  },
+  {
+    "id": "860bf458-462d-4b61-9d6d-83ae688cbb77",
+    "fullName": "Wulan Wijaya",
+    "phone": "08216981353",
+    "email": "wulan.wijaya@mail.com",
+    "gender": "Laki-laki",
+    "dateOfBirth": "1998-09-07",
+    "address": "Jl. Santoso No. 20",
+    "createdAt": "2025-12-15T03:47:45.057Z",
+    "updatedAt": "2025-12-23T03:47:45.057Z"
+  },
+  {
+    "id": "99ff641f-3ea3-413d-8d4c-20e08769964c",
+    "fullName": "Putri Wibowo",
+    "phone": "08898190979",
+    "email": "putri.wibowo@mail.com",
+    "gender": "Perempuan",
+    "dateOfBirth": "1993-02-25",
+    "address": "Jl. Santoso No. 2",
+    "createdAt": "2026-01-08T03:47:45.057Z",
+    "updatedAt": "2026-01-14T03:47:45.057Z"
+  },
+  {
+    "id": "715ce602-c6a7-4ac9-85f5-ea983a889a7b",
+    "fullName": "Salsa Mahendra",
+    "phone": "08288089902",
+    "email": "salsa.mahendra@mail.com",
+    "gender": "Laki-laki",
+    "dateOfBirth": "1990-01-20",
+    "address": "Jl. Harahap No. 35",
+    "createdAt": "2025-11-09T03:47:45.057Z",
+    "updatedAt": "2025-11-18T03:47:45.057Z"
+  },
+  {
+    "id": "137f7ccd-8b0b-4296-844d-6084089c3494",
+    "fullName": "Gita Wibowo",
+    "phone": "08994168209",
+    "email": "gita.wibowo@mail.com",
+    "gender": "Perempuan",
+    "dateOfBirth": "1990-03-16",
+    "address": "Jl. Wibowo No. 48",
+    "createdAt": "2026-01-24T03:47:45.057Z",
+    "updatedAt": "2026-01-26T03:47:45.057Z"
+  },
+  {
+    "id": "0d2fa164-023d-4772-b79c-70623ff9f845",
+    "fullName": "Karina Santoso",
+    "phone": "08402508719",
+    "email": "karina.santoso@mail.com",
+    "gender": "Laki-laki",
+    "dateOfBirth": "1995-08-16",
+    "address": "Jl. Mahendra No. 29",
+    "createdAt": "2025-11-26T03:47:45.057Z",
+    "updatedAt": "2025-11-29T03:47:45.057Z"
+  },
+  {
+    "id": "b67197a3-b8d2-4c2b-90bf-37fa300f27d1",
+    "fullName": "Hafiz Wibowo",
+    "phone": "08298802151",
+    "gender": "Perempuan",
+    "dateOfBirth": "1992-02-09",
+    "address": "Jl. Adriansyah No. 70",
+    "createdAt": "2025-12-29T03:47:45.057Z",
+    "updatedAt": "2026-01-04T03:47:45.057Z"
+  },
+  {
+    "id": "3e34b91a-2401-4f0a-8231-311647961179",
+    "fullName": "Eka Siregar",
+    "phone": "08921365155",
+    "email": "eka.siregar@mail.com",
+    "gender": "Laki-laki",
+    "dateOfBirth": "1990-11-15",
+    "address": "Jl. Putra No. 108",
+    "createdAt": "2025-12-23T03:47:45.057Z",
+    "updatedAt": "2025-12-30T03:47:45.057Z"
+  },
+  {
+    "id": "9a9acdc3-b73d-41b3-afe7-4e07c8f120b7",
+    "fullName": "Karina Saputra",
+    "phone": "08287568690",
+    "email": "karina.saputra@mail.com",
+    "gender": "Perempuan",
+    "dateOfBirth": "2002-06-25",
+    "address": "Jl. Putra No. 90",
+    "createdAt": "2025-12-02T03:47:45.057Z",
+    "updatedAt": "2025-12-10T03:47:45.057Z"
+  },
+  {
+    "id": "139e914c-1510-43b8-bbac-634a6ba1056f",
+    "fullName": "Bima Adriansyah",
+    "phone": "08708991182",
+    "email": "bima.adriansyah@mail.com",
+    "gender": "Perempuan",
+    "dateOfBirth": "2000-08-24",
+    "address": "Jl. Putra No. 72",
+    "createdAt": "2026-01-11T03:47:45.057Z",
+    "updatedAt": "2026-01-16T03:47:45.057Z"
+  },
+  {
+    "id": "763ba5fe-5860-434f-a0a4-c5e9b45dbf21",
+    "fullName": "Intan Siregar",
+    "phone": "08414324578",
+    "email": "intan.siregar@mail.com",
+    "gender": "Perempuan",
+    "dateOfBirth": "1992-11-05",
+    "address": "Jl. Santoso No. 3",
+    "createdAt": "2025-11-08T03:47:45.057Z",
+    "updatedAt": "2025-11-14T03:47:45.057Z"
+  },
+  {
+    "id": "afc5dd13-fd08-4ca8-a398-c4cb9dbb3c41",
+    "fullName": "Citra Harahap",
+    "phone": "08891518243",
+    "email": "citra.harahap@mail.com",
+    "gender": "Perempuan",
+    "dateOfBirth": "1990-04-04",
+    "address": "Jl. Adriansyah No. 35",
+    "createdAt": "2025-11-22T03:47:45.057Z",
+    "updatedAt": "2025-12-01T03:47:45.057Z"
+  },
+  {
+    "id": "d0ec1799-7195-47d0-ba5b-6e0010dedf2a",
+    "fullName": "Karina Kusuma",
+    "phone": "08806311897",
+    "gender": "Perempuan",
+    "dateOfBirth": "1995-06-14",
+    "address": "Jl. Siregar No. 52",
+    "createdAt": "2025-11-23T03:47:45.057Z",
+    "updatedAt": "2025-11-30T03:47:45.057Z"
+  },
+  {
+    "id": "54664998-2e6e-4dd6-91a3-d989a2721d18",
+    "fullName": "Hafiz Wibowo",
+    "phone": "08340659906",
+    "email": "hafiz.wibowo@mail.com",
+    "gender": "Perempuan",
+    "dateOfBirth": "1997-06-04",
+    "address": "Jl. Adriansyah No. 18",
+    "createdAt": "2026-01-13T03:47:45.057Z",
+    "updatedAt": "2026-01-18T03:47:45.057Z"
+  },
+  {
+    "id": "7f73969b-d99c-4627-9ad1-f97925fb8c70",
+    "fullName": "Yusuf Adriansyah",
+    "phone": "08552219411",
+    "gender": "Perempuan",
+    "dateOfBirth": "1988-05-07",
+    "address": "Jl. Harahap No. 68",
+    "createdAt": "2025-11-09T03:47:45.057Z",
+    "updatedAt": "2025-11-13T03:47:45.057Z"
+  }
+]

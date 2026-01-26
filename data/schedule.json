@@ -1,0 +1,18 @@
+{
+  "timezone": "Asia/Jakarta",
+  "weekly": {
+    "mon": { "enabled": true, "ranges": [{ "start": "09:00", "end": "17:00" }] },
+    "tue": { "enabled": true, "ranges": [{ "start": "09:00", "end": "17:00" }] },
+    "wed": { "enabled": true, "ranges": [{ "start": "09:00", "end": "17:00" }] },
+    "thu": { "enabled": true, "ranges": [{ "start": "09:00", "end": "17:00" }] },
+    "fri": { "enabled": true, "ranges": [{ "start": "09:00", "end": "17:00" }] },
+    "sat": { "enabled": false, "ranges": [] },
+    "sun": { "enabled": false, "ranges": [] }
+  },
+  "overrides": [],
+  "slotDurationMins": 30,
+  "bufferMins": 10,
+  "minNoticeHours": 2,
+  "maxFutureDays": 30,
+  "maxBookingsPerDay": null
+}

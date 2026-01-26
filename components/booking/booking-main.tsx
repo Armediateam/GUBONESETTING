@@ -1,25 +1,26 @@
 "use client"
 
 import * as React from "react"
+import { flexRender } from "@tanstack/react-table"
+import type { Cell, Row, Table as TableType } from "@tanstack/react-table"
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
-import { IconCircleCheckFilled, IconLoader, IconDotsVertical } from "@tabler/icons-react"
 
-interface BookingMainProps<T> {
-  table: any
+interface BookingMainProps {
+  table: TableType<unknown>
 }
 
-export function BookingMain<T>({ table }: BookingMainProps<T>) {
+export function BookingMain({ table }: BookingMainProps) {
   return (
     <div className="overflow-hidden rounded-lg border">
       <Table>
         <TableHeader className="bg-muted sticky top-0 z-10">
-          {table.getHeaderGroups().map((hg: any) => (
+          {table.getHeaderGroups().map((hg) => (
             <TableRow key={hg.id}>
-              {hg.headers.map((h: any) => (
+              {hg.headers.map((h) => (
                 <TableHead key={h.id} colSpan={h.colSpan}>
-                  {h.isPlaceholder ? null : h.column.columnDef.header}
+                  {h.isPlaceholder
+                    ? null
+                    : flexRender(h.column.columnDef.header, h.getContext())}
                 </TableHead>
               ))}
             </TableRow>
@@ -28,36 +29,11 @@ export function BookingMain<T>({ table }: BookingMainProps<T>) {
 
         <TableBody>
           {table.getRowModel().rows.length ? (
-            table.getRowModel().rows.map((row: any) => (
+            (table.getRowModel().rows as Row<unknown>[]).map((row) => (
               <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell: any) => (
+                {(row.getVisibleCells() as Cell<unknown, unknown>[]).map((cell) => (
                   <TableCell key={cell.id} className="align-middle">
-                    {cell.column.id === "status" ? (
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        {row.original.status === "Done" || row.original.status === "Completed" ? (
-                          <IconCircleCheckFilled className="w-4 h-4 fill-green-500 dark:fill-green-400" />
-                        ) : (
-                          <IconLoader className="w-4 h-4 animate-spin" />
-                        )}
-                        {row.original.status}
-                      </Badge>
-                    ) : cell.column.id === "actions" ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="text-muted-foreground hover:text-black dark:hover:text-white">
-                            <IconDotsVertical />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>View</DropdownMenuItem>
-                          <DropdownMenuItem>Edit</DropdownMenuItem>
-                          <DropdownMenuItem>Reschedule</DropdownMenuItem>
-                          <DropdownMenuItem>Cancel</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : (
-                      cell.getValue()
-                    )}
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
               </TableRow>

@@ -4,7 +4,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { IconChevronLeft, IconChevronRight, IconChevronsLeft, IconChevronsRight } from "@tabler/icons-react";
 
-export function DoctorFooter() {
+export function TherapistFooter() {
   return (
     <div className="flex justify-end gap-2 mt-2">
       <Button variant="outline" size="icon" disabled>

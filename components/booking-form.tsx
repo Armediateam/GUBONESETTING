@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, ChangeEvent } from "react";
+import { useMemo, useId, useState, FormEvent, ChangeEvent } from "react";
 import {
   Card,
   CardHeader,
@@ -49,6 +49,14 @@ export default function MultiStepBookingForm() {
   });
 
   const [step, setStep] = useState(1); // current step: 1, 2, 3
+  const id = useId();
+  const uniqueCode = useMemo(() => {
+    let hash = 0;
+    for (let i = 0; i < id.length; i += 1) {
+      hash = (hash * 31 + id.charCodeAt(i)) % 900;
+    }
+    return 100 + hash;
+  }, [id]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
   const { name, value } = e.target;
@@ -233,17 +241,8 @@ export default function MultiStepBookingForm() {
                   <p>Bank: <span className="font-medium">BCA</span></p>
                   <p>Account Number: <span className="font-medium">1234567890</span></p>
                   <p>Account Name: <span className="font-medium">PT Wellness Sejahtera</span></p>
-                  {/** random unique code */}
-                  {(() => {
-                    const uniqueCode = Math.floor(100 + Math.random() * 900); // 3 digits
-                    const totalAmount = 250000 + uniqueCode;
-                    return (
-                      <>
-                        <p>Unique Code: <span className="font-medium">{uniqueCode}</span></p>
-                        <p>Total Amount: <span className="font-medium">Rp {totalAmount.toLocaleString()}</span></p>
-                      </>
-                    );
-                  })()}
+                  <p>Unique Code: <span className="font-medium">{uniqueCode}</span></p>
+                  <p>Total Amount: <span className="font-medium">Rp {(250000 + uniqueCode).toLocaleString()}</span></p>
                   <p className="text-sm text-gray-500">
                     Please make the payment first, then upload the payment proof below.
                   </p>

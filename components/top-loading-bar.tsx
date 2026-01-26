@@ -11,19 +11,20 @@ export function TopLoadingBar() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    // Route berubah → mulai loading
-    setVisible(true)
-    setProgress(10)
+    const startTimer = setTimeout(() => {
+      setVisible(true)
+      setProgress(10)
 
-    // Simulasi progress REALISTIS (bukan langsung 100)
-    intervalRef.current = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 90) return prev
-        return prev + Math.random() * 10
-      })
-    }, 200)
+      intervalRef.current = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 90) return prev
+          return prev + Math.random() * 10
+        })
+      }, 200)
+    }, 0)
 
     return () => {
+      clearTimeout(startTimer)
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
         intervalRef.current = null
@@ -34,29 +35,28 @@ export function TopLoadingBar() {
   useEffect(() => {
     if (!visible) return
 
-    // Saat halaman selesai render
     if (intervalRef.current) {
       clearInterval(intervalRef.current)
     }
 
-    setProgress(100)
+    const finishFrame = setTimeout(() => setProgress(100), 0)
 
     const timeout = setTimeout(() => {
       setVisible(false)
       setProgress(0)
     }, 300)
 
-    return () => clearTimeout(timeout)
+    return () => {
+      clearTimeout(finishFrame)
+      clearTimeout(timeout)
+    }
   }, [visible])
 
   if (!visible) return null
 
   return (
     <div className="fixed top-0 left-0 z-50 w-full">
-      <Progress
-        value={progress}
-        className="h-1 rounded-none bg-transparent"
-      />
+      <Progress value={progress} className="h-1 rounded-none bg-transparent" />
     </div>
   )
 }

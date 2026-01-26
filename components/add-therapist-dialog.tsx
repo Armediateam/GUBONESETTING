@@ -12,20 +12,21 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-interface AddDoctorDialogProps {
-  onSuccess?: () => void; // dipanggil setelah doctor berhasil ditambahkan
+interface AddTherapistDialogProps {
+  onSuccess?: () => void; // dipanggil setelah therapist berhasil ditambahkan
 }
 
-export function AddDoctorDialog({ onSuccess }: AddDoctorDialogProps) {
+export function AddTherapistDialog({ onSuccess }: AddTherapistDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
-  const [password, setPassword] = React.useState("");
   const [experience, setExperience] = React.useState("");
   const [phone, setPhone] = React.useState("");
+  const [active, setActive] = React.useState(true);
   const [loading, setLoading] = React.useState(false);
 
   // hanya angka untuk experience
@@ -39,10 +40,16 @@ export function AddDoctorDialog({ onSuccess }: AddDoctorDialogProps) {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/doctors", {
+      const res = await fetch("/api/therapists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, experience, phone }),
+        body: JSON.stringify({
+          name,
+          email,
+          experience: Number(experience || 0),
+          phone,
+          isActive: active,
+        }),
       });
 
       const data = await res.json();
@@ -53,11 +60,11 @@ export function AddDoctorDialog({ onSuccess }: AddDoctorDialogProps) {
         return;
       }
 
-      toast.success("Doctor berhasil ditambahkan!");
+      toast.success("Therapist berhasil ditambahkan!");
 
       // reset form
       setOpen(false);
-      setName(""); setEmail(""); setPassword(""); setExperience(""); setPhone("");
+      setName(""); setEmail(""); setExperience(""); setPhone(""); setActive(true);
 
       // trigger refresh parent
       onSuccess?.();
@@ -73,15 +80,15 @@ export function AddDoctorDialog({ onSuccess }: AddDoctorDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" className="gap-1">
-          Add Doctors
+          Add Therapists
         </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add New Doctor</DialogTitle>
+          <DialogTitle>Add New Therapist</DialogTitle>
           <DialogDescription>
-            Fill in the details to add a new doctor.
+            Fill in the details to add a new therapist.
           </DialogDescription>
         </DialogHeader>
 
@@ -91,7 +98,7 @@ export function AddDoctorDialog({ onSuccess }: AddDoctorDialogProps) {
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Doctor Name"
+              placeholder="Therapist Name"
             />
           </div>
 
@@ -101,17 +108,7 @@ export function AddDoctorDialog({ onSuccess }: AddDoctorDialogProps) {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="doctor@example.com"
-            />
-          </div>
-
-          <div className="grid gap-1">
-            <Label>Password</Label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password"
+              placeholder="therapist@example.com"
             />
           </div>
 
@@ -132,6 +129,19 @@ export function AddDoctorDialog({ onSuccess }: AddDoctorDialogProps) {
               placeholder="Phone Number"
             />
           </div>
+
+          <div className="grid gap-1">
+            <Label>Status</Label>
+            <Select value={active ? "active" : "inactive"} onValueChange={(value) => setActive(value === "active")}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <DialogFooter>
@@ -139,7 +149,7 @@ export function AddDoctorDialog({ onSuccess }: AddDoctorDialogProps) {
             Cancel
           </Button>
           <Button onClick={handleAdd} disabled={loading}>
-            {loading ? "Adding..." : "Add Doctor"}
+            {loading ? "Adding..." : "Add Therapist"}
           </Button>
         </DialogFooter>
       </DialogContent>

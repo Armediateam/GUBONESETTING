@@ -7,8 +7,8 @@ export const adminLoginSchema = z.object({
   password: z.string().min(6, { message: "Password minimal 6 karakter" }),
 })
 
-// ===== Doctor =====
-export const doctorSchema = z.object({
+// ===== Therapist =====
+export const therapistSchema = z.object({
   name: z.string().min(1, { message: "Nama dokter wajib diisi" }),
   specialty: z.string().min(1, { message: "Spesialisasi wajib diisi" }),
   phone: z.string().optional(),
@@ -29,7 +29,7 @@ export const serviceSchema = z.object({
 
 // ===== Booking =====
 export const bookingSchema = z.object({
-  doctorId: z.string().min(1, { message: "Doctor ID wajib diisi" }),
+  therapistId: z.string().min(1, { message: "Therapist ID wajib diisi" }),
   patientId: z.string().min(1, { message: "Patient ID wajib diisi" }),
   serviceId: z.string().optional(),
   date: z.string().refine((val) => !isNaN(Date.parse(val)), {

@@ -7,7 +7,7 @@ export type Booking = {
   datetime: string;
   status: string;
   therapist: string;
-  price: string;
+  price?: string;
 };
 
 // Karena data.json statis, kita bisa langsung return

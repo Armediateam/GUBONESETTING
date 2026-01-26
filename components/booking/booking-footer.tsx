@@ -1,14 +1,15 @@
 "use client"
 
 import * as React from "react"
+import type { Table } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { IconChevronLeft, IconChevronRight, IconChevronsLeft, IconChevronsRight } from "@tabler/icons-react"
 
-interface BookingFooterProps<T> {
-  table: any
+interface BookingFooterProps {
+  table: Table<unknown>
 }
 
-export function BookingFooter<T>({ table }: BookingFooterProps<T>) {
+export function BookingFooter({ table }: BookingFooterProps) {
   return (
     <div className="flex items-center justify-between px-4">
       <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">

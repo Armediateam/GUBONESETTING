@@ -7,15 +7,9 @@ import {
   IconCalendarEvent,
   IconUsers,
   IconUserHeart,
-  IconMassage,
-  IconCreditCard,
-  IconReportAnalytics,
-  IconStar,
-  IconSettings,
-  IconHelp,
-  IconSearch,
   IconInnerShadowTop,
   IconClock,
+  IconMapPin,
 } from "@tabler/icons-react"
 
 
@@ -28,37 +22,41 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Button } from "../ui/button"
 import { NavMain } from "./nav-main"
 import { NavUser } from "./nav-user"
 
-type User = {
-  name: string
-  email: string
-  avatar: string
-}
 const data = {
   /** 🟦 MENU UTAMA */
   navMain: [
     {
       title: "Dashboard",
-      url: "/dashboard",
+      url: "/",
       icon: IconDashboard,
     },
    {
-    title: "Booking",
-    url: "/dashboard/booking",
+    title: "Bookings",
+    url: "/bookings",
     icon: IconCalendarEvent, // tetap kalender
   },
   {
     title: "Schedule",
-    url: "/dashboard/schedule",
+    url: "/schedule",
     icon: IconClock, // diganti icon jam supaya beda
   },
+  {
+    title: "Locations",
+    url: "/locations",
+    icon: IconMapPin,
+  },
     {
-      title: "Doctors",
-      url: "/dashboard/doctors",
+      title: "Therapists",
+      url: "/dashboard/therapists",
       icon: IconUserHeart,
+    },
+    {
+      title: "Patients",
+      url: "/patients",
+      icon: IconUsers,
     }
   ],
 
@@ -134,5 +132,3 @@ export function AppSidebar({
     </Sidebar>
   )
 }
-
-

@@ -39,13 +39,6 @@ const SERVICES = [
   "Physiotherapy",
 ]
 
-const DOCTORS = [
-  "Dr. Andi",
-  "Dr. Siti",
-  "Dr. Budi",
-  "Dr. Maya",
-]
-
 const TIME_SLOTS = [
   "09:00",
   "10:00",
@@ -71,13 +64,14 @@ export function AddBookingDialog({
   onOpenChange: (v: boolean) => void
 }) {
   const [step, setStep] = React.useState<Step>(0)
+  const [therapists, setTherapists] = React.useState<string[]>([])
 
   const [form, setForm] = React.useState({
     customer: "",
     phone: "",
     address: "",
     service: "",
-    doctor: "",
+    therapist: "",
     datetime: "",
     paymentMethod: "",
     paid: false,
@@ -99,6 +93,23 @@ export function AddBookingDialog({
       datetime: `${yyyy}-${mm}-${dd}T${time}`,
     }))
   }, [date, time])
+
+  React.useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch("/api/therapists")
+        if (!res.ok) return
+        const payload = await res.json()
+        const names = (payload.items ?? [])
+          .filter((item: { isActive: boolean }) => item.isActive)
+          .map((item: { name: string }) => item.name)
+        setTherapists(names)
+      } catch (error) {
+        console.error(error)
+      }
+    }
+    load()
+  }, [])
 
   function next() {
     setStep((s) => Math.min(s + 1, 3) as Step)
@@ -182,18 +193,18 @@ export function AddBookingDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>Doctor</Label>
+              <Label>Therapist</Label>
               <Select
-                value={form.doctor}
+                value={form.therapist}
                 onValueChange={(v) =>
-                  setForm({ ...form, doctor: v })
+                  setForm({ ...form, therapist: v })
                 }
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select doctor" />
+                  <SelectValue placeholder="Select therapist" />
                 </SelectTrigger>
                 <SelectContent>
-                  {DOCTORS.map((d) => (
+                  {therapists.map((d) => (
                     <SelectItem key={d} value={d}>
                       {d}
                     </SelectItem>
@@ -292,7 +303,7 @@ export function AddBookingDialog({
             <div>Phone: <b>{form.phone}</b></div>
             <div>Address: <b>{form.address}</b></div>
             <div>Service: <b>{form.service}</b></div>
-            <div>Doctor: <b>{form.doctor}</b></div>
+            <div>Therapist: <b>{form.therapist}</b></div>
             <div>Date & Time: <b>{form.datetime}</b></div>
             <div>Payment: <b>{form.paymentMethod}</b></div>
             <div>Status: {form.paid ? "Paid" : "Unpaid"}</div>
