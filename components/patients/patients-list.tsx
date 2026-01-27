@@ -185,7 +185,7 @@ export function PatientsList() {
                     <TableRow key={patient.id} className="hover:bg-muted/40">
                       <TableCell className="font-medium">
                         <Link
-                          href={`/patients/${patient.id}`}
+                          href={`/dashboard/patients/${patient.id}`}
                           className="text-primary hover:underline"
                         >
                           {patient.fullName}

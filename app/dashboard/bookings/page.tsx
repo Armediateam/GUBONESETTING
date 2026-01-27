@@ -1,5 +1,5 @@
 import { BookingDashboard } from "@/components/booking/booking-dashboard"
 
-export default function BookingPage() {
+export default function BookingsPage() {
   return <BookingDashboard />
 }

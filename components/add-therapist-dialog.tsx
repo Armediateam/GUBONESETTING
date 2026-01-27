@@ -12,7 +12,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
@@ -23,16 +22,12 @@ interface AddTherapistDialogProps {
 export function AddTherapistDialog({ onSuccess }: AddTherapistDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
-  const [email, setEmail] = React.useState("");
-  const [experience, setExperience] = React.useState("");
-  const [phone, setPhone] = React.useState("");
-  const [active, setActive] = React.useState(true);
+  const [price, setPrice] = React.useState("");
   const [loading, setLoading] = React.useState(false);
 
-  // hanya angka untuk experience
-  const handleExperienceChange = (value: string) => {
+  const handlePriceChange = (value: string) => {
     if (/^\d*$/.test(value)) {
-      setExperience(value);
+      setPrice(value);
     }
   };
 
@@ -45,10 +40,7 @@ export function AddTherapistDialog({ onSuccess }: AddTherapistDialogProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          email,
-          experience: Number(experience || 0),
-          phone,
-          isActive: active,
+          price: Number(price || 0),
         }),
       });
 
@@ -64,7 +56,7 @@ export function AddTherapistDialog({ onSuccess }: AddTherapistDialogProps) {
 
       // reset form
       setOpen(false);
-      setName(""); setEmail(""); setExperience(""); setPhone(""); setActive(true);
+      setName(""); setPrice("");
 
       // trigger refresh parent
       onSuccess?.();
@@ -103,45 +95,15 @@ export function AddTherapistDialog({ onSuccess }: AddTherapistDialogProps) {
           </div>
 
           <div className="grid gap-1">
-            <Label>Email</Label>
+            <Label>Therapist Price (IDR)</Label>
             <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="therapist@example.com"
+              type="number"
+              value={price}
+              onChange={(e) => handlePriceChange(e.target.value)}
+              placeholder="250000"
             />
           </div>
 
-          <div className="grid gap-1">
-            <Label>Experience (yrs)</Label>
-            <Input
-              value={experience}
-              onChange={(e) => handleExperienceChange(e.target.value)}
-              placeholder="Experience in years"
-            />
-          </div>
-
-          <div className="grid gap-1">
-            <Label>Phone Number</Label>
-            <Input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Phone Number"
-            />
-          </div>
-
-          <div className="grid gap-1">
-            <Label>Status</Label>
-            <Select value={active ? "active" : "inactive"} onValueChange={(value) => setActive(value === "active")}>
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         <DialogFooter>

@@ -11,7 +11,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "4f9037df-0f70-4f79-b284-e1c778271fb8",
@@ -25,7 +26,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "42416e53-0351-42b0-8b66-39d6825a8b7c",
@@ -39,7 +41,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "61d2733f-4503-4312-970e-dd31e6f074b3",
@@ -53,7 +56,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "510a468f-470e-4d23-87e6-6bae1e729df2",
@@ -67,7 +71,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "c07671ab-fbbc-48f8-98ee-34ff8ece2dbd",
@@ -81,7 +86,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "f401f0a0-33c5-44fd-8a5d-d47c73d74a4c",
@@ -95,7 +101,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "b59bf5fc-4283-4c7d-96ef-b69daedd3a62",
@@ -109,7 +116,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "679c1365-ebc8-49bb-93e7-c1e288642c17",
@@ -123,7 +131,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "1c3aac5c-c4d0-4bd7-9fdd-6b0aac896ae6",
@@ -137,7 +146,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "36735bcb-e96e-47e7-ad75-71251d67e90c",
@@ -151,7 +161,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "4e1e56c8-f43b-4bbe-b5ed-85288d834f3b",
@@ -165,7 +176,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "58c07ad2-50ef-4eb2-b536-f8989468a9eb",
@@ -179,7 +191,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "7737f09f-afc4-4db2-bc42-b047b6f8eefd",
@@ -193,7 +206,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "f5de00f9-79ff-4fe3-a2a1-0a682d01cf39",
@@ -207,7 +221,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "fccbb78a-f213-4ee3-b32a-86ef6be80768",
@@ -221,7 +236,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "20242bec-4a12-45b3-b78f-29126da12b76",
@@ -235,7 +251,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "8377e56e-1006-4690-9017-356767afc8b1",
@@ -249,7 +266,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "cb55b37a-9795-41cd-ab7b-125942f42abc",
@@ -263,7 +281,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "00010654-24dd-48d2-b3e7-26bae64a99d9",
@@ -277,7 +296,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "f378a18f-d085-49bc-a757-fca3be48aa2b",
@@ -291,7 +311,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "d5ff395a-7fe3-45f1-82cc-aae4b9fa819e",
@@ -305,7 +326,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "37150aa5-53a7-4918-a95d-fa1de8a1b23b",
@@ -319,7 +341,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "3fcfe3a3-e55f-41cf-9581-4ddb2aca30ba",
@@ -333,7 +356,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "9e0545fb-ae14-4a2e-96a1-1d6b8a982819",
@@ -347,7 +371,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "547e064f-e7f6-4044-bbb6-aa42efd7cfba",
@@ -361,7 +386,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "ba29b62b-a15b-466a-a868-71190a4d2b59",
@@ -375,7 +401,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "494368b5-3ddb-4999-a0f6-e274f365848f",
@@ -389,7 +416,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "94a463c1-310c-4cc3-b208-39c6ad09b244",
@@ -403,7 +431,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "2a270c8d-a558-4c3b-99e6-d291643703df",
@@ -417,7 +446,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "29b20418-911c-4bfd-acb2-5a91acfafc73",
@@ -431,7 +461,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "6d6b343e-63ea-4d88-a1ca-817c743fa01f",
@@ -445,7 +476,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "f902d2c9-5779-401c-b44b-c35353c719b6",
@@ -459,7 +491,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "a7e912e1-63a2-43ca-b077-0fd4b7d981cc",
@@ -473,7 +506,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "137cedbc-d9bc-4f8c-b9d1-818f6296c15c",
@@ -487,7 +521,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "2c244081-e9a0-4ecf-a414-0cd070815573",
@@ -501,7 +536,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "d8598780-79b0-4971-8409-6cb7aa29f746",
@@ -515,7 +551,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "2e684119-9f05-4bcd-910b-087ead936444",
@@ -529,7 +566,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "ef690e26-12a4-4aa7-80c6-67b940b84654",
@@ -543,7 +581,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "d8c7650d-c4ec-4645-85c3-bc5a74c12015",
@@ -557,7 +596,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "7bdc0c27-05b2-48e2-b097-120e75d6fadc",
@@ -571,7 +611,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "ee56d140-e043-43dc-b2c0-f868789a8624",
@@ -585,7 +626,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "6529250a-ed03-4e12-bf5a-8b0f7896b51a",
@@ -599,7 +641,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "886c2702-4b51-4aea-829f-62e94bb2f582",
@@ -613,7 +656,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "2de58423-7f0d-4426-aa77-eeacc7ffc580",
@@ -627,7 +671,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "f653aa18-b90f-4413-bb7e-29cc316e2ff3",
@@ -641,7 +686,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "2503ac60-437e-49f6-a690-2904406e8487",
@@ -655,7 +701,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "1887c82c-09af-4d05-9be4-98eb564fe2e6",
@@ -669,7 +716,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "46b12be2-2992-440d-aedc-c89d29338205",
@@ -683,7 +731,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "bea14df2-bfa1-413b-b329-fe9ef8402069",
@@ -697,7 +746,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "c5b6ce39-d482-43b7-929e-718cea237b4b",
@@ -711,7 +761,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "f6c73c33-ca76-4349-b352-c76cc3c8c40e",
@@ -725,7 +776,8 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   },
   {
     "id": "c0dbcb13-b8b1-4104-8012-efc7654e1585",
@@ -739,6 +791,7 @@
     "locationName": "Spa Harmoni",
     "locationAddress": "Jl. Sudirman No. 45",
     "therapistId": "042ffb4d-8c46-4a0e-aa6c-6dbfb9ab5d93",
-    "therapistName": "Dr. John Doe"
+    "therapistName": "Dr. John Doe",
+    "paymentStatus": "pending"
   }
 ]

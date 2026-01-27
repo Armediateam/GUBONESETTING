@@ -30,6 +30,7 @@ type DashboardPayload = {
     id: string
     startISO: string
     status: "scheduled" | "completed" | "cancelled" | "no_show"
+    paymentStatus: "pending" | "paid" | "failed" | "expired" | "refunded"
     serviceName: string
     patientName: string
     locationName: string
@@ -54,6 +55,22 @@ const statusVariant: Record<string, "default" | "secondary" | "outline" | "destr
   completed: "default",
   cancelled: "destructive",
   no_show: "outline",
+}
+
+const paymentLabel: Record<string, string> = {
+  pending: "Pending",
+  paid: "Paid",
+  failed: "Failed",
+  expired: "Expired",
+  refunded: "Refunded",
+}
+
+const paymentVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+  pending: "secondary",
+  paid: "default",
+  failed: "destructive",
+  expired: "outline",
+  refunded: "outline",
 }
 
 const formatDateTime = (value: string) =>
@@ -88,7 +105,7 @@ export function DashboardHome() {
       setData(payload)
     } catch (error) {
       console.error(error)
-      toast.error("Gagal memuat dashboard")
+      toast.error("Failed to load dashboard")
     } finally {
       setLoading(false)
     }
@@ -101,12 +118,12 @@ export function DashboardHome() {
   if (!loading && locations.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
-        <h1 className="text-xl font-semibold">Belum ada lokasi</h1>
+        <h1 className="text-xl font-semibold">No positions yet</h1>
         <p className="text-sm text-muted-foreground">
-          Tambahkan lokasi terlebih dahulu untuk mulai mengatur jadwal dan booking.
+          Add a position before managing schedules and bookings.
         </p>
         <Button asChild>
-          <Link href="/locations">Tambah Lokasi</Link>
+          <Link href="/dashboard/locations">Manage Positions</Link>
         </Button>
       </div>
     )
@@ -119,10 +136,10 @@ export function DashboardHome() {
           <h1 className="text-xl font-semibold">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
             {scope === "all"
-              ? "Ringkasan semua lokasi"
+              ? "Summary for all positions"
               : selectedLocation
-                ? `Lokasi aktif: ${selectedLocation.name}`
-                : "Pilih lokasi untuk melihat ringkasan"}
+                ? `Active position: ${selectedLocation.name}`
+                : "Select a position to see the summary"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -132,14 +149,14 @@ export function DashboardHome() {
             onClick={() => setScope("selected")}
             disabled={!selectedLocationId}
           >
-            Lokasi Terpilih
+            Selected Position
           </Button>
           <Button
             variant={scope === "all" ? "default" : "outline"}
             size="sm"
             onClick={() => setScope("all")}
           >
-            Semua Lokasi
+            All Positions
           </Button>
         </div>
       </div>
@@ -176,19 +193,19 @@ export function DashboardHome() {
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button asChild>
-              <Link href="/patients">
+              <Link href="/dashboard/patients">
                 <UserPlus className="mr-2 h-4 w-4" />
                 Add Patient
               </Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/bookings">
+              <Link href="/dashboard/bookings">
                 <CalendarPlus className="mr-2 h-4 w-4" />
                 Create Booking
               </Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/schedule">
+              <Link href="/dashboard/schedule">
                 <FileClock className="mr-2 h-4 w-4" />
                 Edit Schedule
               </Link>
@@ -212,36 +229,42 @@ export function DashboardHome() {
               </div>
             ) : data.recentBookings.length === 0 ? (
               <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                Belum ada booking.
+                No bookings yet.
               </div>
             ) : (
               <div className="rounded-lg border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Patient</TableHead>
-                      <TableHead>Service</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Location</TableHead>
+                    <TableHead>Patient</TableHead>
+                    <TableHead>Service</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Payment</TableHead>
+                    <TableHead>Location</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.recentBookings.map((booking) => (
+                    <TableRow key={booking.id}>
+                      <TableCell className="font-medium">{booking.patientName}</TableCell>
+                      <TableCell>{booking.serviceName}</TableCell>
+                      <TableCell>{formatDateTime(booking.startISO)}</TableCell>
+                      <TableCell>
+                        <Badge variant={statusVariant[booking.status]}>
+                          {statusLabel[booking.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={paymentVariant[booking.paymentStatus]}>
+                          {paymentLabel[booking.paymentStatus]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{booking.locationName}</TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.recentBookings.map((booking) => (
-                      <TableRow key={booking.id}>
-                        <TableCell className="font-medium">{booking.patientName}</TableCell>
-                        <TableCell>{booking.serviceName}</TableCell>
-                        <TableCell>{formatDateTime(booking.startISO)}</TableCell>
-                        <TableCell>
-                          <Badge variant={statusVariant[booking.status]}>
-                            {statusLabel[booking.status]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{booking.locationName}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                  ))}
+                </TableBody>
+              </Table>
               </div>
             )}
           </CardContent>
@@ -250,7 +273,7 @@ export function DashboardHome() {
         <Card>
           <CardHeader>
             <CardTitle>Latest Notes</CardTitle>
-            <CardDescription>Catatan terbaru dari pasien.</CardDescription>
+          <CardDescription>Latest notes from patients.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {loading || !data ? (
@@ -259,7 +282,7 @@ export function DashboardHome() {
               ))
             ) : data.recentNotes.length === 0 ? (
               <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                Belum ada catatan.
+                No notes yet.
               </div>
             ) : (
               data.recentNotes.map((note) => (

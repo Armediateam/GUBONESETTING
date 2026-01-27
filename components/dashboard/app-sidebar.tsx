@@ -10,6 +10,7 @@ import {
   IconInnerShadowTop,
   IconClock,
   IconMapPin,
+  IconBriefcase,
 } from "@tabler/icons-react"
 
 
@@ -30,23 +31,28 @@ const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "/",
+      url: "/dashboard",
       icon: IconDashboard,
     },
    {
     title: "Bookings",
-    url: "/bookings",
+    url: "/dashboard/bookings",
     icon: IconCalendarEvent, // tetap kalender
   },
   {
     title: "Schedule",
-    url: "/schedule",
+    url: "/dashboard/schedule",
     icon: IconClock, // diganti icon jam supaya beda
   },
   {
-    title: "Locations",
-    url: "/locations",
+    title: "Positions",
+    url: "/dashboard/locations",
     icon: IconMapPin,
+  },
+  {
+    title: "Services",
+    url: "/dashboard/services",
+    icon: IconBriefcase,
   },
     {
       title: "Therapists",
@@ -55,7 +61,7 @@ const data = {
     },
     {
       title: "Patients",
-      url: "/patients",
+      url: "/dashboard/patients",
       icon: IconUsers,
     }
   ],
@@ -111,7 +117,7 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="!p-1.5">
-              <Link href="/">
+              <Link href="/dashboard">
                 <IconInnerShadowTop className="!size-5" />
                 <span className="text-base font-semibold">Yen 2 Yen</span>
               </Link>

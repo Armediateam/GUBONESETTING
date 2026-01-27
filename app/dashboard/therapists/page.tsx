@@ -8,9 +8,7 @@ import { TherapistFooter } from "@/components/therapists/therapist-footer";
 // tipe kolom spesifik
 type Columns = {
   name: boolean;
-  email: boolean;
-  status: boolean;
-  experience: boolean;
+  price: boolean;
 };
 
 export default function TherapistsPage() {
@@ -19,9 +17,7 @@ export default function TherapistsPage() {
 
   const [visibleColumns, setVisibleColumns] = useState<Columns>({
     name: true,
-    email: true,
-    status: true,
-    experience: true,
+    price: true,
   });
 
   return (

@@ -19,11 +19,19 @@ import { LocationSwitcher } from "@/components/locations/location-switcher"
 
 export function SiteHeader() {
   const pathname = usePathname()
-  const [time, setTime] = useState(new Date())
+  const [time, setTime] = useState<string>("--:--:--")
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     const interval = setInterval(() => {
-      setTime(new Date())
+      setTime(
+        new Date().toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
+      )
     }, 1000)
 
     return () => clearInterval(interval)
@@ -45,7 +53,7 @@ export function SiteHeader() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link href="/">Dashboard</Link>
+                <Link href="/dashboard">Dashboard</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
 
@@ -78,13 +86,7 @@ export function SiteHeader() {
           <LocationSwitcher />
           <div className="flex items-center gap-2 px-2 py-1.5 text-sm font-medium">
             <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="tabular-nums">
-              {time.toLocaleTimeString("id-ID", {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-              })}
-            </span>
+            <span className="tabular-nums">{mounted ? time : "--:--:--"}</span>
           </div>
         </div>
       </div>

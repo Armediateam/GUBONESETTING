@@ -26,7 +26,6 @@ export const createTherapist = async (input: TherapistInput) => {
   const therapist: TherapistRecord = {
     id: crypto.randomUUID(),
     ...parsed.data,
-    phone: parsed.data.phone || undefined,
     createdAt: now,
     updatedAt: now,
   }
@@ -48,7 +47,6 @@ export const updateTherapist = async (id: string, input: TherapistUpdateInput) =
   const updated: TherapistRecord = {
     ...therapists[index],
     ...parsed.data,
-    phone: parsed.data.phone === "" ? undefined : parsed.data.phone ?? therapists[index].phone,
     updatedAt: new Date().toISOString(),
   }
   therapists[index] = updated
@@ -70,4 +68,15 @@ export const toggleTherapistActive = async (id: string, isActive: boolean) => {
   therapists[index] = updated
   await writeTherapists(therapists)
   return updated
+}
+
+export const deleteTherapist = async (id: string) => {
+  const therapists = await readTherapists()
+  const index = therapists.findIndex((therapist) => therapist.id === id)
+  if (index === -1) {
+    return null
+  }
+  const [removed] = therapists.splice(index, 1)
+  await writeTherapists(therapists)
+  return removed
 }

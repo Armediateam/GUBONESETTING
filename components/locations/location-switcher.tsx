@@ -8,11 +8,20 @@ import { useLocation } from "./location-context"
 
 export function LocationSwitcher() {
   const { locations, selectedLocationId, setSelectedLocationId } = useLocation()
+  const activeLocations = locations.filter((location) => location.isActive)
 
   if (locations.length === 0) {
     return (
       <Badge variant="outline" className="text-xs">
-        Belum ada lokasi
+        No positions
+      </Badge>
+    )
+  }
+
+  if (activeLocations.length === 0) {
+    return (
+      <Badge variant="outline" className="text-xs">
+        No active positions
       </Badge>
     )
   }
@@ -22,13 +31,13 @@ export function LocationSwitcher() {
       value={selectedLocationId ?? ""}
       onValueChange={(value) => setSelectedLocationId(value)}
     >
-      <SelectTrigger className="h-8 w-[200px] text-xs">
-        <SelectValue placeholder="Pilih lokasi" />
+      <SelectTrigger className="h-8 w-[220px] text-xs">
+        <SelectValue placeholder="Select position" />
       </SelectTrigger>
       <SelectContent>
-        {locations.map((location) => (
+        {activeLocations.map((location) => (
           <SelectItem key={location.id} value={location.id}>
-            {location.name}
+            {location.name ?? "Position"}
           </SelectItem>
         ))}
       </SelectContent>

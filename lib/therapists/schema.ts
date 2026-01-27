@@ -1,10 +1,8 @@
 import { z } from "zod"
 
 export const therapistSchema = z.object({
-  name: z.string().min(1, { message: "Nama wajib diisi" }),
-  email: z.string().email({ message: "Email tidak valid" }),
-  phone: z.string().optional().or(z.literal("")),
-  experience: z.number().int().min(0),
+  name: z.string().min(1, { message: "Name is required" }),
+  price: z.number().nonnegative({ message: "Price must be >= 0" }),
   isActive: z.boolean().default(true),
 })
 

@@ -28,7 +28,7 @@ export async function PUT(request: Request) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { message: "Validasi gagal", errors: parsed.error.flatten() },
+        { message: "Validation failed", errors: parsed.error.flatten() },
         { status: 400 }
       )
     }

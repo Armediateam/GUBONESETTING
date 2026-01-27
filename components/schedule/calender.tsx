@@ -1,7 +1,7 @@
 // components/schedule/calender.tsx
 import * as React from "react";
 import { Calendar } from "@/components/ui/calendar"; // Pastikan Calendar ada di path yang benar
-import { Card, CardContent, CardFooter } from "@/components/ui/card"; // Tidak perlu size="sm" di Card
+import { Card, CardContent, CardFooter } from "@/components/ui/card"; // No need for size="sm" on Card
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Clock2Icon } from "lucide-react";

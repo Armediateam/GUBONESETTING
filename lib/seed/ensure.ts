@@ -22,10 +22,6 @@ const MIN_BOOKINGS = 30
 const MAX_BOOKINGS = 55
 const MIN_NOTES = 24
 const MAX_NOTES = 42
-const MIN_LOCATIONS = 5
-const MAX_LOCATIONS = 9
-const MIN_THERAPISTS = 6
-const MAX_THERAPISTS = 10
 
 type Random = () => number
 
@@ -169,28 +165,7 @@ const notePool = [
   "Prefer ruangan lebih hangat.",
 ]
 
-const locationPool = [
-  { name: "Spa Harmoni", city: "Jakarta", address: "Jl. Sudirman No. 45" },
-  { name: "Wellness Kuningan", city: "Jakarta", address: "Jl. Kuningan Barat No. 12" },
-  { name: "Relax Studio", city: "Bandung", address: "Jl. Riau No. 88" },
-  { name: "Serenity Point", city: "Surabaya", address: "Jl. Diponegoro No. 20" },
-  { name: "Lumea Retreat", city: "Bali", address: "Jl. Raya Ubud No. 5" },
-  { name: "Ocean Calm", city: "Bali", address: "Jl. Pantai Sanur No. 9" },
-  { name: "Zen District", city: "Yogyakarta", address: "Jl. Malioboro No. 17" },
-  { name: "Ruang Pulih", city: "Semarang", address: "Jl. Pandanaran No. 30" },
-  { name: "Klinik Sehat", city: "Medan", address: "Jl. Gatot Subroto No. 3" },
-]
 
-const therapistPool = [
-  { name: "Dr. John Doe", email: "john.doe@example.com", experience: 5 },
-  { name: "Dr. Jane Smith", email: "jane.smith@example.com", experience: 3 },
-  { name: "Dr. Alice Johnson", email: "alice.johnson@example.com", experience: 4 },
-  { name: "Dr. Eddie Lake", email: "eddie.lake@example.com", experience: 6 },
-  { name: "Dr. Maya Johnson", email: "maya.johnson@example.com", experience: 4 },
-  { name: "Dr. Carlos Rodriguez", email: "carlos.rodriguez@example.com", experience: 5 },
-  { name: "Dr. Jamik Tashpulatov", email: "jamik.tashpulatov@example.com", experience: 7 },
-  { name: "Dr. Sofia Parker", email: "sofia.parker@example.com", experience: 2 },
-]
 
 const generatePatients = (rand: Random, count: number): PatientRecord[] => {
   const now = new Date()
@@ -218,42 +193,8 @@ const generatePatients = (rand: Random, count: number): PatientRecord[] => {
   })
 }
 
-const generateLocations = (rand: Random, count: number): LocationRecord[] => {
-  const now = new Date()
-  return Array.from({ length: count }).map((_, index) => {
-    const base = locationPool[index % locationPool.length]
-    const createdAt = new Date(now.getTime() - Math.floor(rand() * 120) * 24 * 60 * 60 * 1000)
-    return {
-      id: crypto.randomUUID(),
-      name: base.name,
-      address: base.address,
-      city: base.city,
-      googleMapsUrl: undefined,
-      notes: rand() > 0.7 ? "Parkir terbatas di jam sibuk." : undefined,
-      isActive: rand() > 0.1,
-      createdAt: createdAt.toISOString(),
-      updatedAt: createdAt.toISOString(),
-    }
-  })
-}
 
-const generateTherapists = (rand: Random, count: number): TherapistRecord[] => {
-  const now = new Date()
-  return Array.from({ length: count }).map((_, index) => {
-    const base = therapistPool[index % therapistPool.length]
-    const createdAt = new Date(now.getTime() - Math.floor(rand() * 120) * 24 * 60 * 60 * 1000)
-    return {
-      id: crypto.randomUUID(),
-      name: base.name,
-      email: base.email,
-      phone: `08${Math.floor(100000000 + rand() * 900000000)}`,
-      experience: base.experience,
-      isActive: rand() > 0.1,
-      createdAt: createdAt.toISOString(),
-      updatedAt: createdAt.toISOString(),
-    }
-  })
-}
+
 
 const generateNotes = (rand: Random, patients: PatientRecord[], count: number): NoteRecord[] => {
   const now = new Date()
@@ -395,53 +336,82 @@ const generateBookings = (
 export async function ensureSeedData() {
   const rand = createRandom(42)
 
-  const locations = await readJson<LocationRecord[]>(locationsPath, [])
-  const targetLocations =
-    locations.length >= MIN_LOCATIONS
-      ? locations.length
-      : MIN_LOCATIONS + Math.floor(rand() * (MAX_LOCATIONS - MIN_LOCATIONS + 1))
-  const seededLocations =
-    locations.length >= targetLocations
-      ? locations
-      : [...locations, ...generateLocations(rand, targetLocations - locations.length)]
-  if (seededLocations.length !== locations.length) {
-    await writeJsonAtomic(locationsPath, seededLocations)
-  }
+  const seededLocations = await readJson<LocationRecord[]>(locationsPath, [])
 
   const schedules = await readJson<ScheduleConfig[]>(schedulesPath, [])
   const scheduleMap = new Map(schedules.map((item) => [item.locationId, item]))
   const seededSchedules: ScheduleConfig[] = [...schedules]
 
-  for (const [index, location] of seededLocations.entries()) {
-    const existing = scheduleMap.get(location.id)
-    if (existing) {
-      const parsed = scheduleSchema.safeParse(existing)
-      if (parsed.success) {
-        continue
+  if (seededLocations.length > 0) {
+    for (const [index, location] of seededLocations.entries()) {
+      const existing = scheduleMap.get(location.id)
+      if (existing) {
+        const parsed = scheduleSchema.safeParse(existing)
+        if (parsed.success) {
+          continue
+        }
       }
+      seededSchedules.push({
+        ...buildSeedSchedule(index),
+        locationId: location.id,
+      })
     }
-    seededSchedules.push({
-      ...buildSeedSchedule(index),
-      locationId: location.id,
-    })
-  }
 
-  if (seededSchedules.length !== schedules.length) {
-    await writeJsonAtomic(schedulesPath, seededSchedules)
+    if (seededSchedules.length !== schedules.length) {
+      await writeJsonAtomic(schedulesPath, seededSchedules)
+    }
   }
 
   const therapists = await readJson<TherapistRecord[]>(therapistsPath, [])
-  const targetTherapists =
-    therapists.length >= MIN_THERAPISTS
-      ? therapists.length
-      : MIN_THERAPISTS + Math.floor(rand() * (MAX_THERAPISTS - MIN_THERAPISTS + 1))
-  const seededTherapists =
-    therapists.length >= targetTherapists
-      ? therapists
-      : [...therapists, ...generateTherapists(rand, targetTherapists - therapists.length)]
-  if (seededTherapists.length !== therapists.length) {
-    await writeJsonAtomic(therapistsPath, seededTherapists)
+  const normalizedTherapists = therapists.map((therapist) => {
+    if (typeof therapist.price === "number") {
+      return therapist
+    }
+    return {
+      ...therapist,
+      price: 0,
+      updatedAt: new Date().toISOString(),
+    }
+  })
+  if (normalizedTherapists.some((therapist, index) => therapist !== therapists[index])) {
+    await writeJsonAtomic(therapistsPath, normalizedTherapists)
   }
+
+  const activeTherapists = normalizedTherapists.filter((therapist) => therapist.isActive)
+  const normalizedLocations: LocationRecord[] = seededLocations.map((location) => ({
+    ...location,
+  }))
+  if (activeTherapists.length > 0 && seededLocations.length > 0) {
+    const activeLimit = Math.min(activeTherapists.length, seededLocations.length)
+    const activeIds = new Set(
+      seededLocations.filter((location) => location.isActive).map((location) => location.id)
+    )
+    const nextLocations: LocationRecord[] = seededLocations.map((location) => {
+      const isActive = activeIds.has(location.id)
+      return { ...location, isActive }
+    })
+    if (activeIds.size > activeLimit) {
+      let count = 0
+      for (let i = 0; i < nextLocations.length; i += 1) {
+        if (nextLocations[i].isActive) {
+          count += 1
+          if (count > activeLimit) {
+            nextLocations[i] = {
+              ...nextLocations[i],
+              isActive: false,
+              updatedAt: new Date().toISOString(),
+            }
+          }
+        }
+      }
+    }
+    if (nextLocations.some((location, index) => location.isActive !== seededLocations[index]?.isActive)) {
+      await writeJsonAtomic(locationsPath, nextLocations)
+    }
+    normalizedLocations.splice(0, normalizedLocations.length, ...nextLocations)
+  }
+
+  // Service seeding intentionally removed to avoid auto-repopulating deleted services.
 
   const patients = await readJson<PatientRecord[]>(patientsPath, [])
   const targetPatients =
@@ -474,7 +444,7 @@ export async function ensureSeedData() {
     if (booking.locationId) {
       return booking
     }
-    const fallbackLocation = seededLocations[0]
+    const fallbackLocation = normalizedLocations[0]
     return {
       ...booking,
       locationId: fallbackLocation?.id ?? "",
@@ -486,34 +456,44 @@ export async function ensureSeedData() {
     if (booking.therapistId) {
       return booking
     }
-    const fallbackTherapist = seededTherapists[0]
+    const fallbackTherapist = normalizedTherapists[0]
     return {
       ...booking,
       therapistId: fallbackTherapist?.id ?? "",
       therapistName: booking.therapistName ?? fallbackTherapist?.name,
     }
   })
+  const withPaymentBookings = withTherapistBookings.map((booking) => {
+    if (booking.paymentStatus) {
+      return booking
+    }
+    return {
+      ...booking,
+      paymentStatus: "pending",
+    }
+  })
   if (
-    withTherapistBookings.length !== bookings.length ||
-    withTherapistBookings.some((b, i) => b !== bookings[i])
+    withPaymentBookings.length !== bookings.length ||
+    withPaymentBookings.some((b, i) => b !== bookings[i])
   ) {
-    await writeJsonAtomic(bookingsPath, withTherapistBookings)
+    await writeJsonAtomic(bookingsPath, withPaymentBookings)
   }
-  const baseBookings = withTherapistBookings
+  const baseBookings = withPaymentBookings
   const targetBookings =
     baseBookings.length >= MIN_BOOKINGS
       ? baseBookings.length
       : MIN_BOOKINGS + Math.floor(rand() * (MAX_BOOKINGS - MIN_BOOKINGS + 1))
+  const canSeedBookings = normalizedTherapists.length > 0
   const seededBookings =
-    baseBookings.length >= targetBookings
+    baseBookings.length >= targetBookings || !canSeedBookings
       ? baseBookings
       : [
           ...baseBookings,
           ...generateBookings(
             rand,
             seededSchedules,
-            seededLocations,
-            seededTherapists,
+            normalizedLocations,
+            normalizedTherapists,
             seededPatients,
             targetBookings - baseBookings.length
           ),

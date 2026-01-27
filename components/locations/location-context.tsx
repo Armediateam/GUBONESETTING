@@ -38,8 +38,11 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
 
       const stored = localStorage.getItem(STORAGE_KEY)
       const activeLocations = items.filter((item: LocationRecord) => item.isActive)
-      const fallback = activeLocations[0]?.id ?? items[0]?.id ?? null
-      const nextId = stored && items.some((item: LocationRecord) => item.id === stored) ? stored : fallback
+      const fallback = activeLocations[0]?.id ?? null
+      const nextId =
+        stored && activeLocations.some((item: LocationRecord) => item.id === stored)
+          ? stored
+          : fallback
       setSelectedLocationIdState(nextId)
       if (nextId) {
         localStorage.setItem(STORAGE_KEY, nextId)
@@ -47,7 +50,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error(error)
-      toast.error("Gagal memuat lokasi")
+      toast.error("Failed to load positions")
     }
   }, [])
 

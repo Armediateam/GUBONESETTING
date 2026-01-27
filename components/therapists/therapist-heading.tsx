@@ -9,9 +9,7 @@ import { AddTherapistDialog } from "../add-therapist-dialog";
 // gunakan tipe Columns yang sama
 type Columns = {
   name: boolean;
-  email: boolean;
-  status: boolean;
-  experience: boolean;
+  price: boolean;
 };
 
 interface TherapistHeadingProps {

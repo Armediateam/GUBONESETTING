@@ -302,7 +302,7 @@ export function PatientDetail() {
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link href="/patients">Patients</Link>
+              <Link href="/dashboard/patients">Patients</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />

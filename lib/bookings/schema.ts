@@ -1,16 +1,37 @@
 import { z } from "zod"
 
 export const bookingStatusSchema = z.enum(["scheduled", "completed", "cancelled", "no_show"])
+export const paymentStatusSchema = z.enum([
+  "pending",
+  "paid",
+  "failed",
+  "expired",
+  "refunded",
+])
 
 export const bookingInputSchema = z
   .object({
     patientId: z.string().min(1),
-    locationId: z.string().min(1, "Lokasi wajib dipilih"),
-    therapistId: z.string().min(1, "Therapist wajib dipilih"),
+    locationId: z.string().min(1, "Position is required"),
+    therapistId: z.string().min(1, "Therapist is required"),
     serviceName: z.string().min(1),
     startISO: z.string().min(1),
     endISO: z.string().min(1),
     status: bookingStatusSchema.optional(),
+    paymentStatus: paymentStatusSchema.optional(),
+    payment: z
+      .object({
+        provider: z.string().optional(),
+        orderId: z.string().optional(),
+        transactionId: z.string().optional(),
+        paymentType: z.string().optional(),
+        grossAmount: z.number().nonnegative().optional(),
+        currency: z.string().optional(),
+        transactionTime: z.string().optional(),
+        settlementTime: z.string().optional(),
+        statusMessage: z.string().optional(),
+      })
+      .optional(),
     locationName: z.string().optional(),
     locationAddress: z.string().optional(),
     therapistName: z.string().optional(),

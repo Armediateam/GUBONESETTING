@@ -26,14 +26,14 @@ const toMinutes = (time: string) => {
 
 export const timeRangeSchema = z
   .object({
-    start: z.string().regex(timeRegex, { message: "Gunakan format HH:mm" }),
-    end: z.string().regex(timeRegex, { message: "Gunakan format HH:mm" }),
+    start: z.string().regex(timeRegex, { message: "Use HH:mm format" }),
+    end: z.string().regex(timeRegex, { message: "Use HH:mm format" }),
   })
   .superRefine((range, ctx) => {
     if (toMinutes(range.start) >= toMinutes(range.end)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Jam selesai harus setelah jam mulai",
+        message: "End time must be after start time",
         path: ["end"],
       })
     }
@@ -48,7 +48,7 @@ export const dayAvailabilitySchema = z
     if (day.enabled && day.ranges.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Tambahkan minimal satu rentang waktu",
+        message: "Add at least one time range",
         path: ["ranges"],
       })
     }
@@ -61,7 +61,7 @@ export const dayAvailabilitySchema = z
       if (toMinutes(sorted[i].start) < toMinutes(sorted[i - 1].end)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Rentang waktu tidak boleh saling overlap",
+          message: "Time ranges must not overlap",
           path: ["ranges"],
         })
         break
@@ -72,7 +72,7 @@ export const dayAvailabilitySchema = z
 export const overrideSchema = z
   .object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
-      message: "Gunakan format YYYY-MM-DD",
+      message: "Use YYYY-MM-DD format",
     }),
     closed: z.boolean(),
     ranges: z.array(timeRangeSchema).default([]),
@@ -81,7 +81,7 @@ export const overrideSchema = z
     if (!override.closed && override.ranges.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Tambahkan minimal satu rentang waktu",
+        message: "Add at least one time range",
         path: ["ranges"],
       })
     }
@@ -94,7 +94,7 @@ export const overrideSchema = z
       if (toMinutes(sorted[i].start) < toMinutes(sorted[i - 1].end)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Rentang waktu tidak boleh saling overlap",
+          message: "Time ranges must not overlap",
           path: ["ranges"],
         })
         break
@@ -122,7 +122,7 @@ const numberOrNull = z.preprocess((value) => {
 
 export const scheduleSchema = z
   .object({
-    timezone: z.string().min(1, { message: "Timezone wajib diisi" }),
+    timezone: z.string().min(1, { message: "Timezone is required" }),
     weekly: weeklySchema,
     overrides: z.array(overrideSchema),
     slotDurationMins: z.union([
@@ -160,7 +160,7 @@ export const scheduleSchema = z
       if (seen.has(override.date)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Tanggal override harus unik",
+          message: "Override dates must be unique",
           path: ["overrides"],
         })
         break
@@ -172,7 +172,7 @@ export const scheduleSchema = z
 export type Schedule = z.infer<typeof scheduleSchema>
 
 export const scheduleConfigSchema = scheduleSchema.extend({
-  locationId: z.string().min(1, { message: "Lokasi wajib dipilih" }),
+  locationId: z.string().min(1, { message: "Position is required" }),
 })
 
 export type ScheduleConfig = z.infer<typeof scheduleConfigSchema>

@@ -11,7 +11,7 @@ export const adminLoginSchema = z.object({
 export const therapistSchema = z.object({
   name: z.string().min(1, { message: "Nama dokter wajib diisi" }),
   specialty: z.string().min(1, { message: "Spesialisasi wajib diisi" }),
-  phone: z.string().optional(),
+  price: z.number().nonnegative({ message: "Harga harus >= 0" }),
 })
 
 // ===== Patient =====
@@ -24,7 +24,6 @@ export const patientSchema = z.object({
 // ===== Service =====
 export const serviceSchema = z.object({
   name: z.string().min(1, { message: "Nama layanan wajib diisi" }),
-  price: z.number().nonnegative({ message: "Harga harus >= 0" }),
 })
 
 // ===== Booking =====

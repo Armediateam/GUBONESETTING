@@ -19,7 +19,27 @@ const appointmentsPath = path.join(dataDir, "appointments.json")
 const notesPath = path.join(dataDir, "patient-notes.json")
 
 export const readPatients = async (): Promise<PatientRecord[]> => {
-  return readJson<PatientRecord[]>(patientsPath, [])
+  const patients = await readJson<PatientRecord[]>(patientsPath, [])
+  if (patients.length === 0) {
+    return patients
+  }
+  const seen = new Set<string>()
+  let hasDuplicates = false
+  const next = patients.map((patient) => {
+    if (!seen.has(patient.id)) {
+      seen.add(patient.id)
+      return patient
+    }
+    hasDuplicates = true
+    return {
+      ...patient,
+      id: crypto.randomUUID(),
+    }
+  })
+  if (hasDuplicates) {
+    await writePatients(next)
+  }
+  return next
 }
 
 export const writePatients = async (patients: PatientRecord[]) => {
@@ -35,7 +55,27 @@ export const writeAppointments = async (appointments: AppointmentRecord[]) => {
 }
 
 export const readNotes = async (): Promise<NoteRecord[]> => {
-  return readJson<NoteRecord[]>(notesPath, [])
+  const notes = await readJson<NoteRecord[]>(notesPath, [])
+  if (notes.length === 0) {
+    return notes
+  }
+  const seen = new Set<string>()
+  let hasDuplicates = false
+  const next = notes.map((note) => {
+    if (!seen.has(note.id)) {
+      seen.add(note.id)
+      return note
+    }
+    hasDuplicates = true
+    return {
+      ...note,
+      id: crypto.randomUUID(),
+    }
+  })
+  if (hasDuplicates) {
+    await writeNotes(next)
+  }
+  return next
 }
 
 export const writeNotes = async (notes: NoteRecord[]) => {

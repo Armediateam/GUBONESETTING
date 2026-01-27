@@ -1,8 +1,5 @@
-import BookingForm from '@/components/booking-form'
-import React from 'react'
+import BookingForm from "@/components/booking-form"
 
 export default function BookingPage() {
-  return (
-    <div><BookingForm/></div>
-  )
+  return <BookingForm />
 }

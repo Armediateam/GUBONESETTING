@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const parsed = locationSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(
-        { message: "Validasi gagal", errors: parsed.error.flatten() },
+        { message: "Validation failed", errors: parsed.error.flatten() },
         { status: 400 }
       )
     }

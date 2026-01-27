@@ -8,7 +8,27 @@ const dataDir = path.join(process.cwd(), "data")
 const bookingsPath = path.join(dataDir, "bookings.json")
 
 export const readBookings = async (): Promise<BookingRecord[]> => {
-  return readJson<BookingRecord[]>(bookingsPath, [])
+  const bookings = await readJson<BookingRecord[]>(bookingsPath, [])
+  if (bookings.length === 0) {
+    return bookings
+  }
+  const seen = new Set<string>()
+  let hasDuplicates = false
+  const next = bookings.map((booking) => {
+    if (!seen.has(booking.id)) {
+      seen.add(booking.id)
+      return booking
+    }
+    hasDuplicates = true
+    return {
+      ...booking,
+      id: crypto.randomUUID(),
+    }
+  })
+  if (hasDuplicates) {
+    await writeBookings(next)
+  }
+  return next
 }
 
 export const writeBookings = async (bookings: BookingRecord[]) => {
@@ -26,6 +46,7 @@ export const createBooking = async (input: BookingInput) => {
     id: crypto.randomUUID(),
     ...parsed.data,
     status: parsed.data.status ?? "scheduled",
+    paymentStatus: parsed.data.paymentStatus ?? "pending",
     createdAt: now,
   }
   bookings.push(booking)
@@ -47,6 +68,7 @@ export const updateBooking = async (id: string, input: BookingInput) => {
     ...bookings[index],
     ...parsed.data,
     status: parsed.data.status ?? bookings[index].status,
+    paymentStatus: parsed.data.paymentStatus ?? bookings[index].paymentStatus ?? "pending",
   }
   bookings[index] = updated
   await writeBookings(bookings)

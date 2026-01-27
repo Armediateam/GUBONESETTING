@@ -52,6 +52,7 @@ export async function GET(request: Request) {
       id: booking.id,
       startISO: booking.startISO,
       status: booking.status,
+      paymentStatus: booking.paymentStatus ?? "pending",
       serviceName: booking.serviceName,
       patientName: patientLookup.get(booking.patientId) ?? "Unknown",
       locationName: booking.locationName ?? "Unknown",
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
       id: note.id,
       patientName: patientLookup.get(note.patientId) ?? "Unknown",
       createdAt: note.createdAt,
-      title: note.title ?? "Catatan",
+      title: note.title ?? "Note",
     }))
 
   const totalPatients =

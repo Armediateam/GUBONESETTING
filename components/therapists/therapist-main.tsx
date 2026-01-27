@@ -1,17 +1,32 @@
 "use client"
 
 import * as React from "react"
+import { MoreVertical, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 
 interface Therapist {
   id: string
   name: string
-  email: string
-  isActive: boolean
-  experience: number
-  phone?: string
+  price: number
 }
 
 interface TherapistMainProps {
@@ -20,9 +35,22 @@ interface TherapistMainProps {
   refreshKey: number
 }
 
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value)
+
 export function TherapistMain({ search, visibleColumns, refreshKey }: TherapistMainProps) {
   const [therapists, setTherapists] = React.useState<Therapist[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [editOpen, setEditOpen] = React.useState(false)
+  const [editingTherapist, setEditingTherapist] = React.useState<Therapist | null>(null)
+  const [editForm, setEditForm] = React.useState({
+    name: "",
+    price: "",
+  })
 
   const loadTherapists = React.useCallback(async () => {
     setLoading(true)
@@ -46,55 +74,165 @@ export function TherapistMain({ search, visibleColumns, refreshKey }: TherapistM
   }, [loadTherapists, refreshKey])
 
   const filteredTherapists = therapists.filter(
-    (d) =>
-      d.name.toLowerCase().includes(search.toLowerCase()) ||
-      d.email.toLowerCase().includes(search.toLowerCase())
+    (d) => d.name.toLowerCase().includes(search.toLowerCase())
   )
 
-  return (
-    <div className="rounded-lg border overflow-hidden">
-      <Table>
-        <TableHeader className="bg-muted">
-          <TableRow>
-            {visibleColumns.name && <TableHead>Name</TableHead>}
-            {visibleColumns.email && <TableHead>Email</TableHead>}
-            {visibleColumns.status && <TableHead>Status</TableHead>}
-            {visibleColumns.experience && <TableHead>Experience (yrs)</TableHead>}
-          </TableRow>
-        </TableHeader>
+  const handleEdit = (therapist: Therapist) => {
+    setEditingTherapist(therapist)
+    setEditForm({
+      name: therapist.name,
+      price: therapist.price.toString(),
+    })
+    setEditOpen(true)
+  }
 
-        <TableBody>
-          {loading ? (
+  const handleEditSave = async () => {
+    if (!editingTherapist) return
+    try {
+      const res = await fetch(`/api/therapists/${editingTherapist.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editForm.name,
+          price: Number(editForm.price || 0),
+        }),
+      })
+      const payload = await res.json()
+      if (!res.ok) {
+        toast.error(payload?.message || "Failed to update therapist")
+        return
+      }
+      toast.success("Therapist updated")
+      setEditOpen(false)
+      setEditingTherapist(null)
+      loadTherapists()
+    } catch (error) {
+      console.error(error)
+      toast.error("Server error")
+    }
+  }
+
+  const handleDelete = async (therapist: Therapist) => {
+    const confirmed = window.confirm(`Hapus therapist "${therapist.name}"?`)
+    if (!confirmed) return
+    try {
+      const res = await fetch(`/api/therapists/${therapist.id}`, {
+        method: "DELETE",
+      })
+      const payload = await res.json()
+      if (!res.ok) {
+        toast.error(payload?.message || "Failed to delete therapist")
+        return
+      }
+      toast.success("Therapist deleted")
+      loadTherapists()
+    } catch (error) {
+      console.error(error)
+      toast.error("Server error")
+    }
+  }
+
+  return (
+    <>
+      <div className="rounded-lg border overflow-hidden">
+        <Table>
+          <TableHeader className="bg-muted">
             <TableRow>
-              <TableCell colSpan={Object.keys(visibleColumns).length} className="h-24 text-center text-muted-foreground">
-                Loading...
-              </TableCell>
+              {visibleColumns.name && <TableHead>Name</TableHead>}
+              {visibleColumns.price && <TableHead>Price</TableHead>}
+              <TableHead></TableHead>
             </TableRow>
-          ) : filteredTherapists.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={Object.keys(visibleColumns).length} className="h-24 text-center text-muted-foreground">
-                No data found.
-              </TableCell>
-            </TableRow>
-          ) : (
-            filteredTherapists.map((doc) => (
-              <TableRow key={doc.id}>
-                {visibleColumns.name && <TableCell>{doc.name}</TableCell>}
-                {visibleColumns.email && <TableCell>{doc.email}</TableCell>}
-                {visibleColumns.status && (
-                  <TableCell>
-                    <Badge variant={doc.isActive ? "secondary" : "outline"}>
-                      {doc.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                )}
-                {visibleColumns.experience && <TableCell>{doc.experience}</TableCell>}
+          </TableHeader>
+
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={Object.keys(visibleColumns).length + 1}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  Loading...
+                </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </div>
+            ) : filteredTherapists.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={Object.keys(visibleColumns).length + 1}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  No data found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredTherapists.map((doc) => (
+                <TableRow key={doc.id}>
+                  {visibleColumns.name && <TableCell>{doc.name}</TableCell>}
+                  {visibleColumns.price && <TableCell>{formatCurrency(doc.price)}</TableCell>}
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" aria-label="Therapist actions">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem onClick={() => handleEdit(doc)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelete(doc)}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Therapist</DialogTitle>
+            <DialogDescription>Update therapist details.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-1">
+              <Label>Name</Label>
+              <Input
+                value={editForm.name}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                placeholder="Therapist Name"
+              />
+            </div>
+            <div className="grid gap-1">
+              <Label>Therapist Price (IDR)</Label>
+              <Input
+                type="number"
+                value={editForm.price}
+                onChange={(e) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    price: e.target.value.replace(/[^0-9]/g, ""),
+                  }))
+                }
+                placeholder="250000"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditSave}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

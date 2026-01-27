@@ -55,10 +55,10 @@ type SlotResponse = {
 }
 
 const bookingFormSchema = z.object({
-  patientId: z.string().min(1, "Pasien wajib dipilih"),
-  therapistId: z.string().min(1, "Therapist wajib dipilih"),
-  serviceName: z.string().min(1, "Nama layanan wajib diisi"),
-  dateKey: z.string().min(1, "Tanggal wajib dipilih"),
+  patientId: z.string().min(1, "Patient is required"),
+  therapistId: z.string().min(1, "Therapist is required"),
+  serviceName: z.string().min(1, "Service name is required"),
+  dateKey: z.string().min(1, "Date is required"),
   slotStartISO: z.string().min(1, "Slot waktu wajib dipilih"),
   slotEndISO: z.string().min(1, "Slot waktu wajib dipilih"),
 })
@@ -75,6 +75,22 @@ const statusVariant: Record<string, "default" | "secondary" | "outline" | "destr
   completed: "default",
   cancelled: "destructive",
   no_show: "outline",
+}
+
+const paymentLabel: Record<string, string> = {
+  pending: "Pending",
+  paid: "Paid",
+  failed: "Failed",
+  expired: "Expired",
+  refunded: "Refunded",
+}
+
+const paymentVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+  pending: "secondary",
+  paid: "default",
+  failed: "destructive",
+  expired: "outline",
+  refunded: "outline",
 }
 
 const formatDateKey = (date: Date) => {
@@ -145,7 +161,7 @@ export function BookingDashboard() {
       setPatients(data.items ?? [])
     } catch (error) {
       console.error(error)
-      toast.error("Gagal memuat pasien")
+      toast.error("Failed to load patients")
     }
   }, [])
 
@@ -159,7 +175,7 @@ export function BookingDashboard() {
       setTherapists((data.items ?? []).filter((item: TherapistRecord) => item.isActive))
     } catch (error) {
       console.error(error)
-      toast.error("Gagal memuat therapist")
+      toast.error("Failed to load therapists")
     }
   }, [])
 
@@ -181,7 +197,7 @@ export function BookingDashboard() {
       setBookings(data.items ?? [])
     } catch (error) {
       console.error(error)
-      toast.error("Gagal memuat booking")
+      toast.error("Failed to load bookings")
     } finally {
       setIsLoading(false)
     }
@@ -218,7 +234,7 @@ export function BookingDashboard() {
         setSlots(payload)
       } catch (error) {
         console.error(error)
-        toast.error("Gagal memuat slot")
+        toast.error("Failed to load slots")
       } finally {
         setSlotLoading(false)
       }
@@ -229,11 +245,11 @@ export function BookingDashboard() {
 
   const handleCreateBooking = form.handleSubmit(async (values) => {
       if (!selectedLocationId) {
-        toast.error("Pilih lokasi terlebih dahulu")
+        toast.error("Set an active position first")
         return
       }
       if (!values.therapistId) {
-        toast.error("Pilih therapist terlebih dahulu")
+        toast.error("Select a therapist first")
         return
       }
     try {
@@ -255,12 +271,12 @@ export function BookingDashboard() {
       })
       if (!res.ok) {
         const payload = await res.json()
-        toast.error(payload?.message || "Gagal membuat booking")
+        toast.error(payload?.message || "Failed to create booking")
         return
       }
       await res.json()
       await fetchBookings()
-      toast.success("Booking berhasil dibuat")
+      toast.success("Booking created")
       form.reset()
       setSelectedDate(undefined)
       setSlots(null)
@@ -286,12 +302,12 @@ export function BookingDashboard() {
   if (locations.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
-        <h1 className="text-xl font-semibold">Belum ada lokasi</h1>
+        <h1 className="text-xl font-semibold">No positions yet</h1>
         <p className="text-sm text-muted-foreground">
-          Tambahkan lokasi terlebih dahulu untuk membuat booking.
+          Add a position before creating bookings.
         </p>
         <Button asChild>
-          <Link href="/locations">Tambah Lokasi</Link>
+          <Link href="/dashboard/locations">Manage Positions</Link>
         </Button>
       </div>
     )
@@ -300,7 +316,7 @@ export function BookingDashboard() {
   if (!selectedLocationId) {
     return (
       <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-        Pilih lokasi untuk melihat dan membuat booking.
+        Set an active position to view and create bookings.
       </div>
     )
   }
@@ -311,7 +327,7 @@ export function BookingDashboard() {
         <div>
           <h1 className="text-xl font-semibold">Bookings</h1>
           <p className="text-sm text-muted-foreground">
-            Kelola booking untuk lokasi {selectedLocation?.name ?? "-"}.
+            Manage bookings for position {selectedLocation?.name ?? "-"}.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -333,7 +349,7 @@ export function BookingDashboard() {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Cari layanan/pasien"
+              placeholder="Search service/patient"
             />
           </div>
           <div>
@@ -343,10 +359,10 @@ export function BookingDashboard() {
               onValueChange={(value) => setStatusFilter(value === "all" ? "" : value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Semua status" />
+                <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua</SelectItem>
+                <SelectItem value="all">All</SelectItem>
                 {bookingStatusSchema.options.map((status) => (
                   <SelectItem key={status} value={status}>
                     {statusLabel[status]}
@@ -362,10 +378,10 @@ export function BookingDashboard() {
               onValueChange={(value) => setPatientFilter(value === "all" ? "" : value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Semua pasien" />
+                <SelectValue placeholder="All patients" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua</SelectItem>
+                <SelectItem value="all">All</SelectItem>
                 {patients.map((patient) => (
                   <SelectItem key={patient.id} value={patient.id}>
                     {patient.fullName}
@@ -402,7 +418,7 @@ export function BookingDashboard() {
           </div>
         ) : bookings.length === 0 ? (
           <div className="p-6 text-sm text-muted-foreground">
-            Belum ada booking. Tambahkan booking baru untuk memulai.
+            No bookings yet. Add a booking to get started.
           </div>
         ) : (
           <Table>
@@ -412,8 +428,9 @@ export function BookingDashboard() {
                 <TableHead>Service</TableHead>
                 <TableHead>Date & Time</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Payment</TableHead>
                 <TableHead>Therapist</TableHead>
-                <TableHead>Location</TableHead>
+                <TableHead>Position</TableHead>
                 <TableHead>Created</TableHead>
               </TableRow>
             </TableHeader>
@@ -428,6 +445,11 @@ export function BookingDashboard() {
                   <TableCell>
                     <Badge variant={statusVariant[booking.status]}>
                       {statusLabel[booking.status]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={paymentVariant[booking.paymentStatus ?? "pending"]}>
+                      {paymentLabel[booking.paymentStatus ?? "pending"]}
                     </Badge>
                   </TableCell>
                   <TableCell>{booking.therapistName ?? "-"}</TableCell>
@@ -446,7 +468,7 @@ export function BookingDashboard() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Create Booking</DialogTitle>
-            <DialogDescription>Pilih pasien dan slot yang tersedia.</DialogDescription>
+            <DialogDescription>Select a patient and an available slot.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateBooking} className="space-y-4">
             <input type="hidden" {...form.register("patientId")} />
@@ -463,7 +485,7 @@ export function BookingDashboard() {
                     onValueChange={(value) => form.setValue("patientId", value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Pilih pasien" />
+                      <SelectValue placeholder="Select a patient" />
                     </SelectTrigger>
                     <SelectContent>
                       {patients.map((patient) => (
@@ -497,7 +519,7 @@ export function BookingDashboard() {
                         className="w-full justify-start text-left font-normal"
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedDate ? formatDateKey(selectedDate) : "Pilih tanggal"}
+                        {selectedDate ? formatDateKey(selectedDate) : "Select date"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -517,13 +539,13 @@ export function BookingDashboard() {
                 <FieldContent>
                   {!selectedDate ? (
                     <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                      Pilih tanggal terlebih dahulu.
+                      Select a date first.
                     </div>
                   ) : slotLoading ? (
                     <Skeleton className="h-10 w-full" />
                   ) : slotOptions.length === 0 ? (
                     <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                      Tidak ada slot tersedia.
+                      No slots available.
                     </div>
                   ) : (
                     <Select
@@ -535,7 +557,7 @@ export function BookingDashboard() {
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Pilih slot" />
+                        <SelectValue placeholder="Select a slot" />
                       </SelectTrigger>
                       <SelectContent>
                         {slotOptions.map((slot) => (
@@ -555,7 +577,7 @@ export function BookingDashboard() {
                 <FieldContent>
                   {therapists.length === 0 ? (
                     <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                      Tambahkan therapist terlebih dahulu.
+                      Add a therapist first.
                     </div>
                   ) : (
                     <Select
@@ -563,7 +585,7 @@ export function BookingDashboard() {
                       onValueChange={(value) => form.setValue("therapistId", value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Pilih therapist" />
+                        <SelectValue placeholder="Select a therapist" />
                       </SelectTrigger>
                       <SelectContent>
                         {therapists.map((therapist) => (
@@ -578,7 +600,7 @@ export function BookingDashboard() {
                 </FieldContent>
               </Field>
               <Field>
-                <FieldLabel>Location</FieldLabel>
+                <FieldLabel>Active Position</FieldLabel>
                 <FieldContent>
                   <div className="rounded-lg border px-3 py-2 text-sm">
                     {selectedLocation?.name ?? "-"}
@@ -588,10 +610,10 @@ export function BookingDashboard() {
             </FieldGroup>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Batal
+                Cancel
               </Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "Menyimpan..." : "Simpan Booking"}
+                {form.formState.isSubmitting ? "Saving..." : "Save Booking"}
               </Button>
             </DialogFooter>
           </form>

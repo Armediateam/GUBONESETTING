@@ -2,19 +2,12 @@
 
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import {
-  CalendarIcon,
-  Pencil,
-  Plus,
-  Trash2,
-  TriangleAlert,
-} from "lucide-react"
+import { Plus, Trash2, TriangleAlert } from "lucide-react"
 import {
   type Control,
   type FieldErrors,
   type Resolver,
   type UseFormRegister,
-  type UseFormSetValue,
   useFieldArray,
   useForm,
   useWatch,
@@ -23,14 +16,10 @@ import { toast } from "sonner"
 
 import {
   BUFFER_MINS,
-  dayKeys,
-  defaultSchedule,
   MAX_FUTURE_DAYS,
   MIN_NOTICE_HOURS,
-  overrideSchema,
   SLOT_DURATIONS,
   scheduleSchema,
-  type DayKey,
   type Schedule,
 } from "@/lib/schedule/schema"
 import { generateAvailableSlots } from "@/lib/schedule/slots"
@@ -46,14 +35,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
   Field,
   FieldContent,
   FieldDescription,
@@ -63,22 +44,11 @@ import {
   FieldTitle,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useLocation } from "@/components/locations/location-context"
-const dayLabels: Record<DayKey, string> = {
-  mon: "Senin",
-  tue: "Selasa",
-  wed: "Rabu",
-  thu: "Kamis",
-  fri: "Jumat",
-  sat: "Sabtu",
-  sun: "Minggu",
-}
 
 const defaultRange = { start: "09:00", end: "17:00" }
 
@@ -122,19 +92,38 @@ const toLiteral = <T extends readonly number[]>(values: T, next: number, fallbac
   return (values.includes(next) ? next : fallback) as T[number]
 }
 
+const emptyWeekly = (): Schedule["weekly"] => ({
+  mon: { enabled: false, ranges: [] },
+  tue: { enabled: false, ranges: [] },
+  wed: { enabled: false, ranges: [] },
+  thu: { enabled: false, ranges: [] },
+  fri: { enabled: false, ranges: [] },
+  sat: { enabled: false, ranges: [] },
+  sun: { enabled: false, ranges: [] },
+})
+
+const emptySchedule: Schedule = {
+  timezone: "Asia/Jakarta",
+  weekly: emptyWeekly(),
+  overrides: [],
+  slotDurationMins: 30,
+  bufferMins: 10,
+  minNoticeHours: 2,
+  maxFutureDays: 30,
+  maxBookingsPerDay: null,
+}
+
 export function ScheduleMain() {
   const { selectedLocation, selectedLocationId, locations } = useLocation()
   const [isLoading, setIsLoading] = React.useState(true)
   const [isSaving, setIsSaving] = React.useState(false)
   const [lastSavedAt, setLastSavedAt] = React.useState<string | null>(null)
   const [savedSchedule, setSavedSchedule] = React.useState<Schedule | null>(null)
-  const [overrideDialogOpen, setOverrideDialogOpen] = React.useState(false)
-  const [overrideIndex, setOverrideIndex] = React.useState<number | null>(null)
-  const [overrideIsNew, setOverrideIsNew] = React.useState(false)
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>()
 
   const form = useForm<Schedule>({
     resolver: zodResolver(scheduleSchema) as Resolver<Schedule>,
-    defaultValues: defaultSchedule,
+    defaultValues: emptySchedule,
     mode: "onChange",
   })
 
@@ -170,13 +159,14 @@ export function ScheduleMain() {
         }
         const data = (await res.json()) as Schedule
         if (active) {
-          reset(data)
-          setSavedSchedule(data)
+          const normalized = { ...data, weekly: emptyWeekly() }
+          reset(normalized)
+          setSavedSchedule(normalized)
           setLastSavedAt(new Date().toISOString())
         }
       } catch (error) {
         console.error(error)
-        toast.error("Gagal memuat jadwal")
+        toast.error("Failed to load schedule")
       } finally {
         if (active) {
           setIsLoading(false)
@@ -206,28 +196,34 @@ export function ScheduleMain() {
 
   const onSubmit = handleSubmit(async (values) => {
     if (!selectedLocationId) {
-      toast.error("Pilih lokasi terlebih dahulu")
+      toast.error("Set an active position first")
       return
     }
     setIsSaving(true)
     try {
-      const res = await fetch(`/api/schedule?locationId=${selectedLocationId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      })
+      const payload: Schedule = {
+        ...values,
+        weekly: emptyWeekly(),
+      }
+      const res = await fetch(`/api/schedule?locationId=${selectedLocationId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
 
       if (!res.ok) {
         const payload = await res.json()
-        toast.error(payload?.message || "Gagal menyimpan jadwal")
+        toast.error(payload?.message || "Failed to save schedule")
         return
       }
 
       const data = (await res.json()) as Schedule
-      reset(data)
-      setSavedSchedule(data)
+      const normalized = { ...data, weekly: emptyWeekly() }
+      reset(normalized)
+      setSavedSchedule(normalized)
       setLastSavedAt(new Date().toISOString())
-      toast.success("Jadwal berhasil disimpan")
+      toast.success("Schedule saved")
     } catch (error) {
       console.error(error)
       toast.error("Server error")
@@ -237,58 +233,7 @@ export function ScheduleMain() {
   })
 
   const handleReset = () => {
-    reset(savedSchedule ?? defaultSchedule)
-  }
-
-  const openNewOverride = () => {
-    const index = overridesArray.fields.length
-    const today = formatDateKey(new Date())
-
-    overridesArray.append({
-      date: today,
-      closed: true,
-      ranges: [defaultRange],
-    })
-
-    setOverrideIndex(index)
-    setOverrideIsNew(true)
-    setOverrideDialogOpen(true)
-  }
-
-  const openEditOverride = (index: number) => {
-    setOverrideIndex(index)
-    setOverrideIsNew(false)
-    setOverrideDialogOpen(true)
-  }
-
-  const closeOverrideDialog = () => {
-    if (overrideIsNew && overrideIndex !== null) {
-      overridesArray.remove(overrideIndex)
-    }
-    setOverrideDialogOpen(false)
-    setOverrideIndex(null)
-    setOverrideIsNew(false)
-  }
-
-  const confirmOverrideDialog = () => {
-    if (overrideIndex === null) {
-      return
-    }
-    const override = form.getValues(`overrides.${overrideIndex}`)
-    const parsed = overrideSchema.safeParse(override)
-
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message || "Override tidak valid")
-      return
-    }
-
-    const cleaned = parsed.data.closed
-      ? { ...parsed.data, ranges: [] }
-      : parsed.data
-    overridesArray.update(overrideIndex, cleaned)
-    setOverrideDialogOpen(false)
-    setOverrideIndex(null)
-    setOverrideIsNew(false)
+    reset(savedSchedule ?? emptySchedule)
   }
 
   const previewSchedule = React.useMemo(() => {
@@ -311,6 +256,47 @@ export function ScheduleMain() {
     })
   }, [previewSchedule])
 
+  const selectedDateKey = selectedDate ? formatDateKey(selectedDate) : ""
+  const selectedOverrideIndex = overridesArray.fields.findIndex(
+    (item) => item.date === selectedDateKey
+  )
+  const selectedOverride =
+    selectedOverrideIndex >= 0 ? overridesArray.fields[selectedOverrideIndex] : null
+
+  const overrideDates = overridesArray.fields.map((item) => parseDateKey(item.date))
+
+  const addSelectedDate = () => {
+    if (!selectedDateKey) return
+    if (selectedOverrideIndex !== -1) return
+    overridesArray.append({
+      date: selectedDateKey,
+      closed: false,
+      ranges: [defaultRange],
+    })
+  }
+
+  const removeOverride = (index: number) => {
+    overridesArray.remove(index)
+  }
+
+  const updateOverrideClosed = (checked: boolean) => {
+    if (selectedOverrideIndex < 0) return
+    setValue(`overrides.${selectedOverrideIndex}.closed`, checked, {
+      shouldDirty: true,
+    })
+    if (checked) {
+      setValue(`overrides.${selectedOverrideIndex}.ranges`, [], { shouldDirty: true })
+    } else if (
+      (form.getValues(`overrides.${selectedOverrideIndex}.ranges`) ?? []).length === 0
+    ) {
+      setValue(
+        `overrides.${selectedOverrideIndex}.ranges`,
+        [defaultRange],
+        { shouldDirty: true }
+      )
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -324,7 +310,7 @@ export function ScheduleMain() {
   if (locations.length === 0) {
     return (
       <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-        Belum ada lokasi. Tambahkan lokasi terlebih dahulu sebelum mengatur jadwal.
+        No positions yet. Add a position before managing the schedule.
       </div>
     )
   }
@@ -332,136 +318,196 @@ export function ScheduleMain() {
   if (!selectedLocationId) {
     return (
       <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-        Pilih lokasi untuk mengatur jadwal.
+        Set an active position to manage the schedule.
       </div>
     )
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      <Tabs defaultValue="weekly" className="space-y-6">
-        <div className="sticky top-0 z-10 flex flex-col gap-3 rounded-xl border bg-background/95 px-3 py-3 shadow-sm backdrop-blur sm:px-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="w-full overflow-x-auto">
-            <TabsList className="flex w-max min-w-full flex-nowrap gap-2 whitespace-nowrap">
-              <TabsTrigger value="weekly">Weekly Hours</TabsTrigger>
-              <TabsTrigger value="overrides">Overrides</TabsTrigger>
-              <TabsTrigger value="rules">Booking Rules</TabsTrigger>
-              <TabsTrigger value="preview">Preview</TabsTrigger>
-            </TabsList>
+      <div className="sticky top-0 z-10 flex flex-col gap-3 rounded-xl border bg-background/95 px-3 py-3 shadow-sm backdrop-blur sm:px-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+            Schedule
+          </p>
+          <h1 className="text-xl font-semibold">Date-based availability</h1>
+        </div>
+        <div className="flex w-full flex-col gap-2 md:items-end lg:w-auto lg:flex-row lg:items-center lg:justify-end">
+          <div className="text-xs text-muted-foreground md:text-sm md:text-right lg:whitespace-nowrap">
+            Position: {selectedLocation?.name ?? "-"}
           </div>
-          <div className="flex w-full flex-col gap-2 md:items-end lg:w-auto lg:flex-row lg:items-center lg:justify-end">
-            <div className="text-xs text-muted-foreground md:text-sm md:text-right lg:whitespace-nowrap">
-              Lokasi: {selectedLocation?.name ?? "-"}
-            </div>
-            <div className="text-xs text-muted-foreground md:text-sm md:text-right lg:whitespace-nowrap">
-              {lastSavedAt
-                ? `Terakhir disimpan: ${new Date(lastSavedAt).toLocaleString("id-ID")}`
-                : "Belum pernah disimpan"}
-            </div>
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-between md:w-auto md:justify-end lg:flex-nowrap">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleReset}
-                disabled={!isDirty || isSaving}
-                className="w-full sm:w-auto"
-              >
-                Reset
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={!isDirty || isSaving}
-                className="w-full sm:w-auto"
-              >
-                {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
-              </Button>
-            </div>
+          <div className="text-xs text-muted-foreground md:text-sm md:text-right lg:whitespace-nowrap">
+            {lastSavedAt
+              ? `Last saved: ${new Date(lastSavedAt).toLocaleString("id-ID")}`
+              : "Never saved"}
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-between md:w-auto md:justify-end lg:flex-nowrap">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleReset}
+              disabled={!isDirty || isSaving}
+              className="w-full sm:w-auto"
+            >
+              Reset
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={!isDirty || isSaving}
+              className="w-full sm:w-auto"
+            >
+              {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
           </div>
         </div>
+      </div>
 
-        <TabsContent value="weekly" className="space-y-6">
-          {dayKeys.map((dayKey) => (
-            <DayEditor
-              key={dayKey}
-              dayKey={dayKey}
-              label={dayLabels[dayKey]}
-              control={control}
-              register={register}
-              setValue={setValue}
-              errors={errors}
-            />
-          ))}
-        </TabsContent>
-
-        <TabsContent value="overrides" className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+        <div className="space-y-6">
           <Card>
-            <CardHeader className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <CardTitle>Pengecualian Tanggal</CardTitle>
-                <CardDescription>
-                  Atur hari libur atau jam khusus untuk tanggal tertentu.
-                </CardDescription>
-              </div>
-              <Button type="button" onClick={openNewOverride}>
-                <Plus className="mr-2 h-4 w-4" />
-                Tambah Override
-              </Button>
+            <CardHeader>
+              <CardTitle>Pick a date</CardTitle>
+              <CardDescription>
+                Set opening hours for specific dates only.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {overridesArray.fields.length === 0 ? (
-                <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                  Belum ada override. Tambahkan pengecualian untuk tanggal tertentu.
+            <CardContent className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+              <div className="space-y-4">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  modifiers={{ hasOverride: overrideDates }}
+                  modifiersClassNames={{ hasOverride: "bg-primary/15 text-primary" }}
+                  className="rounded-lg border"
+                />
+                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  Select a date to add or edit hours.
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {overridesArray.fields.map((override, index) => (
-                    <div
-                      key={override.id}
-                      className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            {override.date}
-                          </span>
-                          {override.closed ? (
-                            <Badge variant="destructive">Closed</Badge>
-                          ) : (
-                            <Badge variant="secondary">
-                              {override.ranges?.length || 0} rentang
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {override.closed
-                            ? "Tutup sepanjang hari"
-                            : "Jam khusus berlaku"}
-                        </p>
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Selected date</p>
+                  <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+                    <div>
+                      <div className="text-sm font-semibold">
+                        {selectedDateKey || "No date selected"}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openEditOverride(index)}
-                        >
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => overridesArray.remove(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <div className="text-xs text-muted-foreground">
+                        {selectedDateKey
+                          ? formatDateLabel(selectedDateKey, scheduleWatch?.timezone ?? "Asia/Jakarta")
+                          : "Pick a date on the calendar"}
                       </div>
                     </div>
-                  ))}
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={addSelectedDate}
+                      disabled={!selectedDateKey || selectedOverrideIndex !== -1}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Date
+                    </Button>
+                  </div>
                 </div>
+
+                {selectedOverride ? (
+                  <div className="space-y-4 rounded-lg border p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Date settings</p>
+                        <p className="text-xs text-muted-foreground">
+                          {selectedOverride.date}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeOverride(selectedOverrideIndex)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+                      <div>
+                        <FieldTitle>Closed all day</FieldTitle>
+                        <FieldDescription>
+                          Disable all booking hours on this date.
+                        </FieldDescription>
+                      </div>
+                      <Switch
+                        checked={!!form.getValues(`overrides.${selectedOverrideIndex}.closed`)}
+                        onCheckedChange={updateOverrideClosed}
+                      />
+                    </div>
+
+                    {!form.getValues(`overrides.${selectedOverrideIndex}.closed`) && (
+                      <OverrideRanges
+                        control={control}
+                        register={register}
+                        errors={errors}
+                        index={selectedOverrideIndex}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                    No hours set for this date yet.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Saved dates</CardTitle>
+              <CardDescription>Manage all date-specific hours.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {overridesArray.fields.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                  No dates configured yet.
+                </div>
+              ) : (
+                overridesArray.fields.map((override, index) => (
+                  <div
+                    key={override.id}
+                    className={cn(
+                      "flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between",
+                      override.date === selectedDateKey && "border-primary/60 bg-muted/40"
+                    )}
+                  >
+                    <div>
+                      <div className="text-sm font-medium">{override.date}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {override.closed ? "Closed" : `${override.ranges?.length || 0} ranges`}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedDate(parseDateKey(override.date))}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeOverride(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
               )}
               {errors.overrides &&
                 "message" in errors.overrides &&
@@ -470,14 +516,14 @@ export function ScheduleMain() {
                 )}
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
 
-        <TabsContent value="rules" className="space-y-6">
+        <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Booking Rules</CardTitle>
+              <CardTitle>Booking rules</CardTitle>
               <CardDescription>
-                Sesuaikan aturan booking, slot, buffer, dan batas waktu.
+                Set slot, buffer, and booking window limits.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -492,7 +538,7 @@ export function ScheduleMain() {
                       ))}
                     </datalist>
                     <FieldDescription>
-                      Gunakan IANA timezone, contoh: Asia/Jakarta.
+                      Use an IANA timezone, e.g. Asia/Jakarta.
                     </FieldDescription>
                     <FieldError errors={[errors.timezone]} />
                   </FieldContent>
@@ -500,29 +546,25 @@ export function ScheduleMain() {
 
                 <div className="grid gap-4 lg:grid-cols-2">
                   <Field>
-                    <FieldLabel>Durasi Slot (menit)</FieldLabel>
+                    <FieldLabel>Slot Duration (mins)</FieldLabel>
                     <FieldContent>
                       <Select
                         value={String(scheduleWatch?.slotDurationMins ?? "30")}
                         onValueChange={(value) =>
                           setValue(
                             "slotDurationMins",
-                            toLiteral(
-                              SLOT_DURATIONS,
-                              Number(value),
-                              defaultSchedule.slotDurationMins
-                            ),
+                            toLiteral(SLOT_DURATIONS, Number(value), 30),
                             { shouldDirty: true }
                           )
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Pilih durasi" />
+                          <SelectValue placeholder="Select duration" />
                         </SelectTrigger>
                         <SelectContent>
                           {[15, 30, 45, 60].map((value) => (
                             <SelectItem key={value} value={String(value)}>
-                              {value} menit
+                              {value} mins
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -532,29 +574,25 @@ export function ScheduleMain() {
                   </Field>
 
                   <Field>
-                    <FieldLabel>Buffer antar booking (menit)</FieldLabel>
+                    <FieldLabel>Buffer Between Bookings (mins)</FieldLabel>
                     <FieldContent>
                       <Select
                         value={String(scheduleWatch?.bufferMins ?? "10")}
                         onValueChange={(value) =>
                           setValue(
                             "bufferMins",
-                            toLiteral(
-                              BUFFER_MINS,
-                              Number(value),
-                              defaultSchedule.bufferMins
-                            ),
+                            toLiteral(BUFFER_MINS, Number(value), 10),
                             { shouldDirty: true }
                           )
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Pilih buffer" />
+                          <SelectValue placeholder="Select buffer" />
                         </SelectTrigger>
                         <SelectContent>
                           {[0, 5, 10, 15, 30].map((value) => (
                             <SelectItem key={value} value={String(value)}>
-                              {value} menit
+                              {value} mins
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -566,29 +604,25 @@ export function ScheduleMain() {
 
                 <div className="grid gap-4 lg:grid-cols-2">
                   <Field>
-                    <FieldLabel>Minimal Notice (jam)</FieldLabel>
+                    <FieldLabel>Minimum Notice (hours)</FieldLabel>
                     <FieldContent>
                       <Select
                         value={String(scheduleWatch?.minNoticeHours ?? "2")}
                         onValueChange={(value) =>
                           setValue(
                             "minNoticeHours",
-                            toLiteral(
-                              MIN_NOTICE_HOURS,
-                              Number(value),
-                              defaultSchedule.minNoticeHours
-                            ),
+                            toLiteral(MIN_NOTICE_HOURS, Number(value), 2),
                             { shouldDirty: true }
                           )
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Pilih minimal notice" />
+                          <SelectValue placeholder="Select minimum notice" />
                         </SelectTrigger>
                         <SelectContent>
                           {[1, 2, 6, 12, 24].map((value) => (
                             <SelectItem key={value} value={String(value)}>
-                              {value} jam
+                              {value} hours
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -598,29 +632,25 @@ export function ScheduleMain() {
                   </Field>
 
                   <Field>
-                    <FieldLabel>Maksimal Booking ke Depan (hari)</FieldLabel>
+                    <FieldLabel>Max Future Booking (days)</FieldLabel>
                     <FieldContent>
                       <Select
                         value={String(scheduleWatch?.maxFutureDays ?? "30")}
                         onValueChange={(value) =>
                           setValue(
                             "maxFutureDays",
-                            toLiteral(
-                              MAX_FUTURE_DAYS,
-                              Number(value),
-                              defaultSchedule.maxFutureDays
-                            ),
+                            toLiteral(MAX_FUTURE_DAYS, Number(value), 30),
                             { shouldDirty: true }
                           )
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Pilih rentang" />
+                          <SelectValue placeholder="Select range" />
                         </SelectTrigger>
                         <SelectContent>
                           {[7, 14, 30, 60, 90].map((value) => (
                             <SelectItem key={value} value={String(value)}>
-                              {value} hari
+                              {value} days
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -631,19 +661,19 @@ export function ScheduleMain() {
                 </div>
 
                 <Field>
-                  <FieldLabel>Maksimal Booking per Hari (opsional)</FieldLabel>
+                  <FieldLabel>Max Bookings per Day (optional)</FieldLabel>
                   <FieldContent>
                     <Input
                       type="number"
                       min={1}
-                      placeholder="Tanpa batas"
+                      placeholder="No limit"
                       {...register("maxBookingsPerDay", {
                         setValueAs: (value) =>
                           value === "" ? null : Number(value),
                       })}
                     />
                     <FieldDescription>
-                      Kosongkan jika tidak ada batas jumlah booking per hari.
+                      Leave empty if there is no daily booking limit.
                     </FieldDescription>
                     <FieldError errors={[errors.maxBookingsPerDay]} />
                   </FieldContent>
@@ -651,21 +681,19 @@ export function ScheduleMain() {
               </FieldGroup>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="preview" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Preview Slot 7 Hari</CardTitle>
+              <CardTitle>7-Day Slot Preview</CardTitle>
               <CardDescription>
-                Pratinjau slot berdasarkan konfigurasi saat ini.
+                Preview slots based on the current configuration.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {!previewSchedule && (
                 <div className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
                   <TriangleAlert className="h-4 w-4" />
-                  Perbaiki error validasi untuk melihat preview slot.
+                  Fix validation errors to see slot previews.
                 </div>
               )}
               {previewSchedule &&
@@ -687,7 +715,7 @@ export function ScheduleMain() {
                     <Separator className="my-3" />
                     {day.slots.length === 0 ? (
                       <div className="text-sm text-muted-foreground">
-                        Tidak ada slot tersedia.
+                        No slots available.
                       </div>
                     ) : (
                       <div className="flex flex-wrap gap-2">
@@ -704,326 +732,85 @@ export function ScheduleMain() {
                 ))}
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
-
-      <OverrideDialog
-        open={overrideDialogOpen}
-        index={overrideIndex}
-        onOpenChange={(open) => {
-          if (!open) {
-            closeOverrideDialog()
-          }
-        }}
-        onCancel={closeOverrideDialog}
-        onConfirm={confirmOverrideDialog}
-        control={control}
-        register={register}
-        setValue={setValue}
-        errors={errors}
-      />
+        </div>
+      </div>
     </form>
   )
 }
 
-function DayEditor({
-  dayKey,
-  label,
+function OverrideRanges({
   control,
   register,
-  setValue,
   errors,
-}: {
-  dayKey: DayKey
-  label: string
-  control: Control<Schedule>
-  register: UseFormRegister<Schedule>
-  setValue: UseFormSetValue<Schedule>
-  errors: FieldErrors<Schedule>
-}) {
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: `weekly.${dayKey}.ranges`,
-  })
-
-  const enabled = useWatch({
-    control,
-    name: `weekly.${dayKey}.enabled`,
-  })
-
-  const dayErrors = errors.weekly?.[dayKey]?.ranges
-  const dayRangeMessage =
-    dayErrors && "message" in dayErrors ? (dayErrors.message as string) : undefined
-
-  const toggleDay = (checked: boolean) => {
-    setValue(`weekly.${dayKey}.enabled`, checked, { shouldDirty: true })
-    if (checked && fields.length === 0) {
-      append(defaultRange, { shouldFocus: false })
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <CardTitle>{label}</CardTitle>
-          <CardDescription>
-            {enabled ? "Aktif" : "Nonaktif"}
-          </CardDescription>
-        </div>
-        <div className="flex items-center gap-3">
-          <FieldTitle>Aktifkan hari</FieldTitle>
-          <Switch checked={!!enabled} onCheckedChange={toggleDay} />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {!enabled && (
-          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-            Hari ini tidak menerima booking.
-          </div>
-        )}
-
-        {enabled && (
-          <div className="space-y-3">
-            {fields.map((field, index) => {
-              const startError = errors.weekly?.[dayKey]?.ranges?.[index]?.start
-              const endError = errors.weekly?.[dayKey]?.ranges?.[index]?.end
-
-              return (
-                <div
-                  key={field.id}
-                  className="grid gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_1fr_auto]"
-                >
-                  <div>
-                    <FieldLabel>Mulai</FieldLabel>
-                    <Input
-                      type="time"
-                      step={60}
-                      {...register(`weekly.${dayKey}.ranges.${index}.start`)}
-                    />
-                    <FieldError errors={[startError]} />
-                  </div>
-                  <div>
-                    <FieldLabel>Selesai</FieldLabel>
-                    <Input
-                      type="time"
-                      step={60}
-                      {...register(`weekly.${dayKey}.ranges.${index}.end`)}
-                    />
-                    <FieldError errors={[endError]} />
-                  </div>
-                  <div className="flex items-end">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => remove(index)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )
-            })}
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => append(defaultRange)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Tambah Rentang
-            </Button>
-
-            {dayRangeMessage && <FieldError errors={[{ message: dayRangeMessage }]} />}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-function OverrideDialog({
-  open,
   index,
-  onOpenChange,
-  onCancel,
-  onConfirm,
-  control,
-  register,
-  setValue,
-  errors,
 }: {
-  open: boolean
-  index: number | null
-  onOpenChange: (open: boolean) => void
-  onCancel: () => void
-  onConfirm: () => void
   control: Control<Schedule>
   register: UseFormRegister<Schedule>
-  setValue: UseFormSetValue<Schedule>
   errors: FieldErrors<Schedule>
+  index: number
 }) {
-  const safeIndex = index ?? 0
-
   const rangesArray = useFieldArray({
     control,
-    name: `overrides.${safeIndex}.ranges`,
+    name: `overrides.${index}.ranges`,
   })
 
-  const closed = useWatch({
-    control,
-    name: `overrides.${safeIndex}.closed`,
-  })
-
-  const dateValue = useWatch({
-    control,
-    name: `overrides.${safeIndex}.date`,
-  })
-
-  const overrideErrors = errors.overrides?.[safeIndex]
-  const overrideRangeMessage =
-    overrideErrors?.ranges && "message" in overrideErrors.ranges
-      ? (overrideErrors.ranges.message as string)
-      : undefined
+  const rangeErrors = errors.overrides?.[index]?.ranges
+  const rangeMessage =
+    rangeErrors && "message" in rangeErrors ? (rangeErrors.message as string) : undefined
 
   return (
-    <Dialog open={open && index !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Atur Override</DialogTitle>
-          <DialogDescription>
-            Tentukan apakah tanggal ditutup atau gunakan jam khusus.
-          </DialogDescription>
-        </DialogHeader>
+    <div className="space-y-3">
+      {rangesArray.fields.map((range, rangeIndex) => {
+        const startError = errors.overrides?.[index]?.ranges?.[rangeIndex]?.start
+        const endError = errors.overrides?.[index]?.ranges?.[rangeIndex]?.end
 
-        <div className="space-y-4">
-          <FieldGroup>
-            <Field>
-              <FieldLabel>Tanggal</FieldLabel>
-              <FieldContent>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !dateValue && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateValue ? dateValue : "Pilih tanggal"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateValue ? parseDateKey(dateValue) : undefined}
-                      onSelect={(date) => {
-                        if (!date) {
-                          return
-                        }
-                        setValue(`overrides.${safeIndex}.date`, formatDateKey(date), {
-                          shouldDirty: true,
-                        })
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FieldError errors={[overrideErrors?.date]} />
-              </FieldContent>
-            </Field>
-
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div>
-                <FieldTitle>Tutup sepanjang hari</FieldTitle>
-                <FieldDescription>
-                  Nonaktifkan seluruh jam booking pada tanggal ini.
-                </FieldDescription>
-              </div>
-              <Switch
-                checked={!!closed}
-                onCheckedChange={(checked) =>
-                  setValue(`overrides.${safeIndex}.closed`, checked, {
-                    shouldDirty: true,
-                  })
-                }
+        return (
+          <div
+            key={range.id}
+            className="grid gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_1fr_auto]"
+          >
+            <div>
+              <FieldLabel>Mulai</FieldLabel>
+              <Input
+                type="time"
+                step={60}
+                {...register(`overrides.${index}.ranges.${rangeIndex}.start`)}
               />
+              <FieldError errors={[startError]} />
             </div>
-          </FieldGroup>
-
-          {!closed && (
-            <div className="space-y-3">
-              {rangesArray.fields.map((range, rangeIndex) => {
-                const startError =
-                  errors.overrides?.[safeIndex]?.ranges?.[rangeIndex]?.start
-                const endError =
-                  errors.overrides?.[safeIndex]?.ranges?.[rangeIndex]?.end
-
-                return (
-                  <div
-                    key={range.id}
-                    className="grid gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_1fr_auto]"
-                  >
-                    <div>
-                      <FieldLabel>Mulai</FieldLabel>
-                      <Input
-                        type="time"
-                        step={60}
-                        {...register(`overrides.${safeIndex}.ranges.${rangeIndex}.start`)}
-                      />
-                      <FieldError errors={[startError]} />
-                    </div>
-                    <div>
-                      <FieldLabel>Selesai</FieldLabel>
-                      <Input
-                        type="time"
-                        step={60}
-                        {...register(`overrides.${safeIndex}.ranges.${rangeIndex}.end`)}
-                      />
-                      <FieldError errors={[endError]} />
-                    </div>
-                    <div className="flex items-end">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => rangesArray.remove(rangeIndex)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )
-              })}
-
+            <div>
+              <FieldLabel>Selesai</FieldLabel>
+              <Input
+                type="time"
+                step={60}
+                {...register(`overrides.${index}.ranges.${rangeIndex}.end`)}
+              />
+              <FieldError errors={[endError]} />
+            </div>
+            <div className="flex items-end">
               <Button
                 type="button"
-                variant="outline"
-                onClick={() => rangesArray.append(defaultRange)}
+                variant="ghost"
+                size="icon"
+                onClick={() => rangesArray.remove(rangeIndex)}
               >
-                <Plus className="mr-2 h-4 w-4" />
-                Tambah Rentang
+                <Trash2 className="h-4 w-4" />
               </Button>
-
-              {overrideRangeMessage && (
-                <FieldError errors={[{ message: overrideRangeMessage }]} />
-              )}
             </div>
-          )}
-        </div>
+          </div>
+        )
+      })}
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Batal
-          </Button>
-          <Button type="button" onClick={onConfirm}>
-            Simpan Override
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => rangesArray.append(defaultRange)}
+      >
+        <Plus className="mr-2 h-4 w-4" />
+        Add Range
+      </Button>
+
+      {rangeMessage && <FieldError errors={[{ message: rangeMessage }]} />}
+    </div>
   )
 }
-

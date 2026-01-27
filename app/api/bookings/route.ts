@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     const parsed = bookingInputSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(
-        { message: "Validasi gagal", errors: parsed.error.flatten() },
+        { message: "Validation failed", errors: parsed.error.flatten() },
         { status: 400 }
       )
     }
@@ -75,19 +75,19 @@ export async function POST(request: NextRequest) {
     const locations = await readLocations()
     const location = locations.find((item) => item.id === parsed.data.locationId)
     if (!location) {
-      return NextResponse.json({ message: "Lokasi tidak ditemukan" }, { status: 400 })
+      return NextResponse.json({ message: "Position not found" }, { status: 400 })
     }
     if (!location.isActive) {
-      return NextResponse.json({ message: "Lokasi tidak aktif" }, { status: 400 })
+      return NextResponse.json({ message: "Position is not active" }, { status: 400 })
     }
 
     const therapists = await readTherapists()
     const therapist = therapists.find((item) => item.id === parsed.data.therapistId)
     if (!therapist) {
-      return NextResponse.json({ message: "Therapist tidak ditemukan" }, { status: 400 })
+      return NextResponse.json({ message: "Therapist not found" }, { status: 400 })
     }
     if (!therapist.isActive) {
-      return NextResponse.json({ message: "Therapist tidak aktif" }, { status: 400 })
+      return NextResponse.json({ message: "Therapist is not active" }, { status: 400 })
     }
 
     const schedule = await readSchedule(parsed.data.locationId)
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
 
     if (!slotAvailable) {
       return NextResponse.json(
-        { message: "Slot sudah terisi atau di luar jadwal." },
+        { message: "Slot is taken or outside the schedule." },
         { status: 409 }
       )
     }
