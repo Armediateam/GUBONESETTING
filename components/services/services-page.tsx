@@ -5,10 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
-import { z } from "zod"
-
 import type { ServiceRecord } from "@/lib/services/schema"
-import { serviceSchema } from "@/lib/services/schema"
+import { serviceFormSchema, type ServiceFormValues } from "@/lib/services/form"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -50,16 +48,11 @@ const formatDate = (value: string) =>
     year: "numeric",
   }).format(new Date(value))
 
-const serviceFormSchema = z.object({
-  name: serviceSchema.shape.name,
-  durationMins: z.preprocess(
-    (value) => (value === "" || value === null || value === undefined ? undefined : Number(value)),
-    serviceSchema.shape.durationMins.optional()
-  ),
-  isActive: serviceSchema.shape.isActive.unwrap(),
-})
-
-type ServiceFormValues = z.infer<typeof serviceFormSchema>
+const toDurationValue = (value: string) => {
+  if (!value) return undefined
+  const parsed = Number(value)
+  return Number.isNaN(parsed) ? undefined : parsed
+}
 
 export function ServicesPage() {
   const [services, setServices] = React.useState<ServiceRecord[]>([])
@@ -104,7 +97,7 @@ export function ServicesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...values,
-          durationMins: values.durationMins || undefined,
+          durationMins: toDurationValue(String(values.durationMins ?? "")),
         }),
       })
       if (!res.ok) {
@@ -254,7 +247,13 @@ export function ServicesPage() {
                 <Field>
                   <FieldLabel>Duration (mins)</FieldLabel>
                   <FieldContent>
-                    <Input type="number" {...form.register("durationMins")} placeholder="60" />
+                  <Input
+                    type="number"
+                    {...form.register("durationMins", {
+                      setValueAs: (value) => toDurationValue(String(value)),
+                    })}
+                    placeholder="60"
+                  />
                     <FieldError errors={[form.formState.errors.durationMins]} />
                   </FieldContent>
                 </Field>
