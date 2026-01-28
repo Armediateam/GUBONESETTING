@@ -70,6 +70,12 @@ const parseDateKey = (dateKey: string) => {
   return new Date(year, month - 1, day)
 }
 
+const getMonthRange = (value: Date) => {
+  const start = new Date(value.getFullYear(), value.getMonth(), 1, 0, 0, 0, 0)
+  const end = new Date(value.getFullYear(), value.getMonth() + 1, 0, 23, 59, 59, 999)
+  return { start, end }
+}
+
 const formatTimeLabel = (iso: string, timeZone: string) => {
   const date = new Date(iso)
   return new Intl.DateTimeFormat("id-ID", {
@@ -123,6 +129,10 @@ export function ScheduleMain() {
   const [lastSavedAt, setLastSavedAt] = React.useState<string | null>(null)
   const [savedSchedule, setSavedSchedule] = React.useState<Schedule | null>(null)
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>()
+  const [calendarMonth, setCalendarMonth] = React.useState<Date>(new Date())
+  const [calendarSlots, setCalendarSlots] = React.useState<
+    { date: string; slots: { startISO: string; endISO: string }[]; totalSlots?: number }[]
+  >([])
 
   const form = useForm<Schedule>({
     resolver: zodResolver(scheduleSchema) as Resolver<Schedule>,
@@ -216,6 +226,36 @@ export function ScheduleMain() {
   }, [reset, selectedLocationId, selectedTherapistId])
 
   React.useEffect(() => {
+    if (!selectedLocationId || !selectedTherapistId) {
+      setCalendarSlots([])
+      return
+    }
+
+    const { start, end } = getMonthRange(calendarMonth)
+
+    const loadCalendarSlots = async () => {
+      try {
+        const res = await fetch(
+          `/api/slots?rangeStart=${start.toISOString()}&rangeEnd=${end.toISOString()}&locationId=${selectedLocationId}&therapistId=${selectedTherapistId}`
+        )
+        if (!res.ok) {
+          setCalendarSlots([])
+          return
+        }
+        const payload = (await res.json()) as {
+          items?: { date: string; slots: []; totalSlots?: number }[]
+        }
+        setCalendarSlots(payload.items ?? [])
+      } catch (error) {
+        console.error(error)
+        setCalendarSlots([])
+      }
+    }
+
+    loadCalendarSlots()
+  }, [calendarMonth, selectedLocationId, selectedTherapistId])
+
+  React.useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {
       if (!isDirty) {
         return
@@ -286,7 +326,8 @@ export function ScheduleMain() {
     }
 
     const start = new Date()
-    const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000)
+    const rangeDays = previewSchedule.maxFutureDays ?? 30
+    const end = new Date(start.getTime() + rangeDays * 24 * 60 * 60 * 1000)
 
     return generateAvailableSlots({
       schedule: previewSchedule,
@@ -303,6 +344,12 @@ export function ScheduleMain() {
     selectedOverrideIndex >= 0 ? overridesArray.fields[selectedOverrideIndex] : null
 
   const overrideDates = overridesArray.fields.map((item) => parseDateKey(item.date))
+  const availableCalendarDates = calendarSlots
+    .filter((day) => day.slots.length > 0)
+    .map((day) => parseDateKey(day.date))
+  const fullCalendarDates = calendarSlots
+    .filter((day) => (day.totalSlots ?? 0) > 0 && day.slots.length === 0)
+    .map((day) => parseDateKey(day.date))
 
   const addSelectedDate = () => {
     if (!selectedDateKey) return
@@ -463,8 +510,17 @@ export function ScheduleMain() {
                   mode="single"
                   selected={selectedDate}
                   onSelect={setSelectedDate}
-                  modifiers={{ hasOverride: overrideDates }}
-                  modifiersClassNames={{ hasOverride: "bg-primary/15 text-primary" }}
+                  onMonthChange={setCalendarMonth}
+                  modifiers={{
+                    hasOverride: overrideDates,
+                    available: availableCalendarDates,
+                    full: fullCalendarDates,
+                  }}
+                  modifiersClassNames={{
+                    hasOverride: "bg-primary/15 text-primary",
+                    available: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+                    full: "bg-red-500/15 text-red-700 dark:text-red-300",
+                  }}
                   className="rounded-lg border"
                 />
                 <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">

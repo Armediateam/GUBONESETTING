@@ -57,6 +57,7 @@ import {
 type SlotDay = {
   date: string
   slots: { startISO: string; endISO: string }[]
+  totalSlots?: number
 }
 
 type SlotResponse = {
@@ -123,6 +124,17 @@ const formatDateKey = (date: Date) => {
   return `${year}-${month}-${day}`
 }
 
+const parseDateKey = (value: string) => {
+  const [year, month, day] = value.split("-").map((part) => Number(part))
+  return new Date(year, month - 1, day)
+}
+
+const getMonthRange = (value: Date) => {
+  const start = new Date(value.getFullYear(), value.getMonth(), 1, 0, 0, 0, 0)
+  const end = new Date(value.getFullYear(), value.getMonth() + 1, 0, 23, 59, 59, 999)
+  return { start, end }
+}
+
 const formatDateTime = (value: string, timeZone?: string) =>
   new Intl.DateTimeFormat("id-ID", {
     timeZone,
@@ -155,14 +167,19 @@ export function BookingDashboard() {
   const [bookingStep, setBookingStep] = React.useState(1)
   const [slotLoading, setSlotLoading] = React.useState(false)
   const [slots, setSlots] = React.useState<SlotResponse | null>(null)
+  const [calendarSlots, setCalendarSlots] = React.useState<SlotResponse | null>(null)
   const [rescheduleOpen, setRescheduleOpen] = React.useState(false)
   const [rescheduleBooking, setRescheduleBooking] = React.useState<BookingRecord | null>(null)
   const [rescheduleDate, setRescheduleDate] = React.useState<Date | undefined>()
+  const [rescheduleMonth, setRescheduleMonth] = React.useState<Date>(new Date())
+  const [rescheduleCalendarSlots, setRescheduleCalendarSlots] =
+    React.useState<SlotResponse | null>(null)
   const [rescheduleSlots, setRescheduleSlots] = React.useState<SlotResponse | null>(null)
   const [rescheduleSlotLoading, setRescheduleSlotLoading] = React.useState(false)
   const [rescheduleSlotStartISO, setRescheduleSlotStartISO] = React.useState("")
   const [rescheduleSlotEndISO, setRescheduleSlotEndISO] = React.useState("")
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>()
+  const [calendarMonth, setCalendarMonth] = React.useState<Date>(new Date())
   const [search, setSearch] = React.useState("")
   const [debouncedSearch, setDebouncedSearch] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("")
@@ -358,6 +375,36 @@ export function BookingDashboard() {
   }, [form, selectedDate, watchedLocationId, watchedTherapistId])
 
   React.useEffect(() => {
+    const locationId = form.getValues("locationId")
+    const therapistId = form.getValues("therapistId")
+    if (!locationId || !therapistId) {
+      setCalendarSlots(null)
+      return
+    }
+
+    const { start, end } = getMonthRange(calendarMonth)
+
+    const loadCalendarSlots = async () => {
+      try {
+        const res = await fetch(
+          `/api/slots?rangeStart=${start.toISOString()}&rangeEnd=${end.toISOString()}&locationId=${locationId}&therapistId=${therapistId}`
+        )
+        if (!res.ok) {
+          throw new Error("Failed to load slots")
+        }
+        const payload = (await res.json()) as SlotResponse
+        setCalendarSlots(payload)
+      } catch (error) {
+        console.error(error)
+        toast.error("Failed to load slots")
+      } finally {
+      }
+    }
+
+    loadCalendarSlots()
+  }, [form, calendarMonth, watchedLocationId, watchedTherapistId])
+
+  React.useEffect(() => {
     if (!rescheduleBooking || !rescheduleDate) {
       setRescheduleSlots(null)
       setRescheduleSlotStartISO("")
@@ -385,6 +432,34 @@ export function BookingDashboard() {
     }
     loadSlots()
   }, [rescheduleBooking, rescheduleDate])
+
+  React.useEffect(() => {
+    if (!rescheduleBooking) {
+      setRescheduleCalendarSlots(null)
+      return
+    }
+
+    const { start, end } = getMonthRange(rescheduleMonth)
+
+    const loadRescheduleCalendarSlots = async () => {
+      try {
+        const res = await fetch(
+          `/api/slots?rangeStart=${start.toISOString()}&rangeEnd=${end.toISOString()}&locationId=${rescheduleBooking.locationId}&therapistId=${rescheduleBooking.therapistId}`
+        )
+        if (!res.ok) {
+          throw new Error("Failed to load slots")
+        }
+        const payload = (await res.json()) as SlotResponse
+        setRescheduleCalendarSlots(payload)
+      } catch (error) {
+        console.error(error)
+        toast.error("Failed to load slots")
+      } finally {
+      }
+    }
+
+    loadRescheduleCalendarSlots()
+  }, [rescheduleBooking, rescheduleMonth])
 
   const handleCreateBooking = form.handleSubmit(async (values) => {
       if (!values.locationId) {
@@ -499,7 +574,9 @@ export function BookingDashboard() {
 
   const handleOpenReschedule = (booking: BookingRecord) => {
     setRescheduleBooking(booking)
-    setRescheduleDate(new Date(booking.startISO))
+    const nextDate = new Date(booking.startISO)
+    setRescheduleDate(nextDate)
+    setRescheduleMonth(nextDate)
     setRescheduleSlotStartISO(booking.startISO)
     setRescheduleSlotEndISO(booking.endISO)
     setRescheduleOpen(true)
@@ -549,6 +626,34 @@ export function BookingDashboard() {
     const day = slots.items.find((item) => item.date === form.getValues("dateKey"))
     return day?.slots ?? []
   }, [slots, form])
+
+  const calendarAvailableDates = React.useMemo(() => {
+    if (!calendarSlots) return []
+    return calendarSlots.items
+      .filter((day) => day.slots.length > 0)
+      .map((day) => parseDateKey(day.date))
+  }, [calendarSlots])
+
+  const calendarFullDates = React.useMemo(() => {
+    if (!calendarSlots) return []
+    return calendarSlots.items
+      .filter((day) => (day.totalSlots ?? 0) > 0 && day.slots.length === 0)
+      .map((day) => parseDateKey(day.date))
+  }, [calendarSlots])
+
+  const rescheduleAvailableDates = React.useMemo(() => {
+    if (!rescheduleCalendarSlots) return []
+    return rescheduleCalendarSlots.items
+      .filter((day) => day.slots.length > 0)
+      .map((day) => parseDateKey(day.date))
+  }, [rescheduleCalendarSlots])
+
+  const rescheduleFullDates = React.useMemo(() => {
+    if (!rescheduleCalendarSlots) return []
+    return rescheduleCalendarSlots.items
+      .filter((day) => (day.totalSlots ?? 0) > 0 && day.slots.length === 0)
+      .map((day) => parseDateKey(day.date))
+  }, [rescheduleCalendarSlots])
 
   const patientLookup = React.useMemo(() => {
     return new Map(patients.map((patient) => [patient.id, patient.fullName]))
@@ -1017,6 +1122,15 @@ export function BookingDashboard() {
                               mode="single"
                               selected={selectedDate}
                               onSelect={setSelectedDate}
+                              onMonthChange={setCalendarMonth}
+                              modifiers={{
+                                available: calendarAvailableDates,
+                                full: calendarFullDates,
+                              }}
+                              modifiersClassNames={{
+                                available: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+                                full: "bg-red-500/15 text-red-700 dark:text-red-300",
+                              }}
                               initialFocus
                             />
                           </PopoverContent>
@@ -1148,6 +1262,15 @@ export function BookingDashboard() {
                       mode="single"
                       selected={rescheduleDate}
                       onSelect={setRescheduleDate}
+                      onMonthChange={setRescheduleMonth}
+                      modifiers={{
+                        available: rescheduleAvailableDates,
+                        full: rescheduleFullDates,
+                      }}
+                      modifiersClassNames={{
+                        available: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+                        full: "bg-red-500/15 text-red-700 dark:text-red-300",
+                      }}
                       initialFocus
                     />
                   </PopoverContent>

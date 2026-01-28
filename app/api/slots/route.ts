@@ -45,7 +45,13 @@ export async function GET(request: NextRequest) {
     ? rangeEnd
     : new Date(`${date}T23:59:59.000Z`).toISOString()
 
-  const slots = generateAvailableSlots({
+  const allSlots = generateAvailableSlots({
+    schedule,
+    rangeStartISO,
+    rangeEndISO,
+  })
+
+  const availableSlots = generateAvailableSlots({
     schedule,
     rangeStartISO,
     rangeEndISO,
@@ -62,8 +68,13 @@ export async function GET(request: NextRequest) {
       })),
   })
 
+  const totalSlotMap = new Map(allSlots.map((day) => [day.date, day.slots.length]))
+
   return NextResponse.json({
     timeZone: schedule.timezone,
-    items: slots,
+    items: availableSlots.map((day) => ({
+      ...day,
+      totalSlots: totalSlotMap.get(day.date) ?? 0,
+    })),
   })
 }

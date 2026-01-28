@@ -35,6 +35,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 type SlotDay = {
   date: string
   slots: { startISO: string; endISO: string }[]
+  totalSlots?: number
 }
 
 type SlotResponse = {
@@ -72,6 +73,17 @@ const formatDateKey = (date: Date) => {
   return `${year}-${month}-${day}`
 }
 
+const parseDateKey = (value: string) => {
+  const [year, month, day] = value.split("-").map((part) => Number(part))
+  return new Date(year, month - 1, day)
+}
+
+const getMonthRange = (value: Date) => {
+  const start = new Date(value.getFullYear(), value.getMonth(), 1, 0, 0, 0, 0)
+  const end = new Date(value.getFullYear(), value.getMonth() + 1, 0, 23, 59, 59, 999)
+  return { start, end }
+}
+
 const formatDateLabel = (value: Date) =>
   new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
@@ -98,7 +110,9 @@ export default function BookingForm() {
     { locationId: string; therapistId: string }[]
   >([])
   const [slots, setSlots] = React.useState<SlotResponse | null>(null)
+  const [calendarSlots, setCalendarSlots] = React.useState<SlotResponse | null>(null)
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>()
+  const [calendarMonth, setCalendarMonth] = React.useState<Date>(new Date())
 
   const form = useForm({
     resolver: zodResolver(bookingFormSchema),
@@ -255,11 +269,52 @@ export default function BookingForm() {
     loadSlots()
   }, [form, selectedDate, watchedLocationId, watchedTherapistId])
 
+  React.useEffect(() => {
+    if (!watchedLocationId || !watchedTherapistId) {
+      setCalendarSlots(null)
+      return
+    }
+
+    const { start, end } = getMonthRange(calendarMonth)
+
+    const loadCalendarSlots = async () => {
+      try {
+        const res = await fetch(
+          `/api/slots?rangeStart=${start.toISOString()}&rangeEnd=${end.toISOString()}&locationId=${watchedLocationId}&therapistId=${watchedTherapistId}`
+        )
+        if (!res.ok) {
+          throw new Error("Failed to load slots")
+        }
+        const payload = (await res.json()) as SlotResponse
+        setCalendarSlots(payload)
+      } catch (error) {
+        console.error(error)
+        toast.error("Failed to load slots")
+      }
+    }
+
+    loadCalendarSlots()
+  }, [calendarMonth, watchedLocationId, watchedTherapistId])
+
   const slotOptions = React.useMemo(() => {
     if (!slots || !form.getValues("dateKey")) return []
     const dateKey = form.getValues("dateKey")
     return slots.items.find((item) => item.date === dateKey)?.slots ?? []
   }, [slots, form])
+
+  const calendarAvailableDates = React.useMemo(() => {
+    if (!calendarSlots) return []
+    return calendarSlots.items
+      .filter((day) => day.slots.length > 0)
+      .map((day) => parseDateKey(day.date))
+  }, [calendarSlots])
+
+  const calendarFullDates = React.useMemo(() => {
+    if (!calendarSlots) return []
+    return calendarSlots.items
+      .filter((day) => (day.totalSlots ?? 0) > 0 && day.slots.length === 0)
+      .map((day) => parseDateKey(day.date))
+  }, [calendarSlots])
 
   const handleSubmit = form.handleSubmit(async (values) => {
     try {
@@ -509,6 +564,15 @@ export default function BookingForm() {
                                 mode="single"
                                 selected={selectedDate}
                                 onSelect={setSelectedDate}
+                                onMonthChange={setCalendarMonth}
+                                modifiers={{
+                                  available: calendarAvailableDates,
+                                  full: calendarFullDates,
+                                }}
+                                modifiersClassNames={{
+                                  available: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+                                  full: "bg-red-500/15 text-red-700 dark:text-red-300",
+                                }}
                                 initialFocus
                               />
                             </PopoverContent>
