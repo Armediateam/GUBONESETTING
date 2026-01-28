@@ -7,6 +7,7 @@ import { createBooking, readBookings } from "@/lib/bookings/storage"
 import { ensureSeedData } from "@/lib/seed/ensure"
 import { readLocations } from "@/lib/locations/storage"
 import { readTherapists } from "@/lib/therapists/storage"
+import { readPatients } from "@/lib/patients/storage"
 
 const matchesDate = (iso: string, date: string) => {
   const value = new Date(iso)
@@ -28,6 +29,17 @@ export async function GET(request: NextRequest) {
   const q = searchParams.get("q")?.toLowerCase() ?? ""
 
   const bookings = await readBookings()
+  const patientLookup = new Map<string, { fullName: string; phone: string; email?: string }>()
+  if (q) {
+    const patients = await readPatients()
+    patients.forEach((patient) => {
+      patientLookup.set(patient.id, {
+        fullName: patient.fullName,
+        phone: patient.phone,
+        email: patient.email,
+      })
+    })
+  }
   const filtered = bookings.filter((booking) => {
     if (status && booking.status !== status) {
       return false
@@ -51,7 +63,10 @@ export async function GET(request: NextRequest) {
       }
     }
     if (q) {
-      const haystack = `${booking.serviceName} ${booking.patientId}`.toLowerCase()
+      const patient = patientLookup.get(booking.patientId)
+      const haystack = `${booking.serviceName} ${booking.patientId} ${patient?.fullName ?? ""} ${
+        patient?.phone ?? ""
+      } ${patient?.email ?? ""}`.toLowerCase()
       return haystack.includes(q)
     }
     return true

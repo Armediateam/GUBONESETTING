@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { CalendarIcon, Filter, MoreVertical, Plus } from "lucide-react"
+import { CalendarIcon, Filter, MoreVertical, Plus, Search } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -160,6 +160,7 @@ export function BookingDashboard() {
   const [rescheduleSlotEndISO, setRescheduleSlotEndISO] = React.useState("")
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>()
   const [search, setSearch] = React.useState("")
+  const [debouncedSearch, setDebouncedSearch] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("")
   const [patientFilter, setPatientFilter] = React.useState<string>("")
   const [locationFilter, setLocationFilter] = React.useState<string>("")
@@ -274,7 +275,7 @@ export function BookingDashboard() {
     setIsLoading(true)
     try {
       const params = new URLSearchParams()
-      if (search) params.set("q", search)
+      if (debouncedSearch) params.set("q", debouncedSearch)
       if (statusFilter) params.set("status", statusFilter)
       if (patientFilter) params.set("patientId", patientFilter)
       if (locationFilter) params.set("locationId", locationFilter)
@@ -292,7 +293,7 @@ export function BookingDashboard() {
     } finally {
       setIsLoading(false)
     }
-  }, [search, statusFilter, patientFilter, locationFilter, dateFrom, dateTo])
+  }, [debouncedSearch, statusFilter, patientFilter, locationFilter, dateFrom, dateTo])
 
   React.useEffect(() => {
     fetchLocations()
@@ -305,6 +306,11 @@ export function BookingDashboard() {
   React.useEffect(() => {
     fetchBookings()
   }, [fetchBookings])
+
+  React.useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(search), 400)
+    return () => clearTimeout(handle)
+  }, [search])
 
   const watchedLocationId = form.watch("locationId")
   const watchedTherapistId = form.watch("therapistId")
@@ -605,16 +611,20 @@ export function BookingDashboard() {
         </div>
       </div>
 
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search service/patient"
+            className="pl-9"
+          />
+        </div>
+      </div>
+
       {filtersOpen && (
         <div className="grid gap-3 rounded-xl border bg-muted/40 p-4 md:grid-cols-6">
-          <div>
-            <FieldLabel>Search</FieldLabel>
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search service/patient"
-            />
-          </div>
           <div>
             <FieldLabel>Status</FieldLabel>
             <Select
