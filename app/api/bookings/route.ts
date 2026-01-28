@@ -110,7 +110,8 @@ export async function POST(request: NextRequest) {
         .filter(
           (booking) =>
             booking.locationId === parsed.data.locationId &&
-            booking.therapistId === parsed.data.therapistId
+            booking.therapistId === parsed.data.therapistId &&
+            booking.status === "scheduled"
         )
         .map((booking) => ({
           startISO: booking.startISO,

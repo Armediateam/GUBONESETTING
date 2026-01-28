@@ -52,7 +52,9 @@ export async function GET(request: NextRequest) {
     existingBookings: bookings
       .filter(
         (booking) =>
-          booking.locationId === locationId && booking.therapistId === therapistId
+          booking.locationId === locationId &&
+          booking.therapistId === therapistId &&
+          booking.status === "scheduled"
       )
       .map((booking) => ({
         startISO: booking.startISO,
