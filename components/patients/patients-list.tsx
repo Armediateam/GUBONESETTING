@@ -2,29 +2,11 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Search, Plus } from "lucide-react"
-import { useForm } from "react-hook-form"
+import { MoreVertical, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
-import { patientSchema, type PatientFormValues, type PatientRecord } from "@/lib/patients/schema"
+import { type PatientRecord } from "@/lib/patients/schema"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -36,10 +18,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 type PatientListItem = PatientRecord & {
   totalVisits: number
-  lastVisit: string | null
   upcoming: string | null
 }
 
@@ -52,19 +39,6 @@ export function PatientsList() {
   const [search, setSearch] = React.useState("")
   const [debouncedSearch, setDebouncedSearch] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(true)
-  const [dialogOpen, setDialogOpen] = React.useState(false)
-
-  const form = useForm<PatientFormValues>({
-    resolver: zodResolver(patientSchema),
-    defaultValues: {
-      fullName: "",
-      phone: "",
-      email: "",
-      gender: "",
-      dateOfBirth: "",
-      address: "",
-    },
-  })
 
   React.useEffect(() => {
     const handle = setTimeout(() => setDebouncedSearch(search), 400)
@@ -101,28 +75,24 @@ export function PatientsList() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
-  const onSubmit = form.handleSubmit(async (values) => {
+  const handleDelete = async (patientId: string) => {
+    const confirmed = window.confirm("Hapus pasien ini?")
+    if (!confirmed) return
     try {
-      const res = await fetch("/api/patients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      })
+      const res = await fetch(`/api/patients/${patientId}`, { method: "DELETE" })
+      const payload = await res.json()
       if (!res.ok) {
-        const payload = await res.json()
-        toast.error(payload?.message || "Gagal menambah pasien")
+        toast.error(payload?.message || "Gagal menghapus pasien")
         return
       }
-      toast.success("Pasien berhasil ditambahkan")
-      form.reset()
-      setDialogOpen(false)
+      toast.success("Pasien dihapus")
       setPage(1)
       fetchPatients()
     } catch (error) {
       console.error(error)
       toast.error("Server error")
     }
-  })
+  }
 
   return (
     <div className="space-y-6">
@@ -132,10 +102,6 @@ export function PatientsList() {
             <CardTitle>Patients</CardTitle>
             <CardDescription>Kelola data pasien dan riwayat kunjungan.</CardDescription>
           </div>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Patient
-          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -164,7 +130,7 @@ export function PatientsList() {
             </div>
           ) : items.length === 0 ? (
             <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-              Belum ada pasien. Tambahkan pasien baru untuk memulai.
+              Belum ada pasien. Data pasien akan muncul setelah booking dibuat.
             </div>
           ) : (
             <div className="rounded-lg border">
@@ -173,16 +139,17 @@ export function PatientsList() {
                   <TableRow>
                     <TableHead>Nama</TableHead>
                     <TableHead>Telepon</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Total Visits</TableHead>
-                    <TableHead>Last Visit</TableHead>
-                    <TableHead>Upcoming</TableHead>
-                    <TableHead>Created</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((patient) => (
-                    <TableRow key={patient.id} className="hover:bg-muted/40">
+                  <TableHead>Email</TableHead>
+                  <TableHead>Complaint</TableHead>
+                  <TableHead>Total Visits</TableHead>
+                  <TableHead>Upcoming</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((patient) => (
+                  <TableRow key={patient.id} className="hover:bg-muted/40">
                       <TableCell className="font-medium">
                         <Link
                           href={`/dashboard/patients/${patient.id}`}
@@ -193,13 +160,31 @@ export function PatientsList() {
                       </TableCell>
                       <TableCell>{patient.phone}</TableCell>
                       <TableCell>{patient.email ?? "-"}</TableCell>
+                      <TableCell>{patient.complaint ?? "-"}</TableCell>
                       <TableCell>{patient.totalVisits}</TableCell>
-                      <TableCell>{patient.lastVisit ? formatDate(patient.lastVisit) : "-"}</TableCell>
                       <TableCell>{patient.upcoming ? formatDate(patient.upcoming) : "-"}</TableCell>
                       <TableCell>{formatDate(patient.createdAt)}</TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" aria-label="Patient actions">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleDelete(patient.id)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     </TableRow>
                   ))}
-                </TableBody>
+              </TableBody>
               </Table>
             </div>
           )}
@@ -229,69 +214,6 @@ export function PatientsList() {
           </div>
         </CardContent>
       </Card>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Tambah Pasien</DialogTitle>
-            <DialogDescription>Lengkapi data pasien baru.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <FieldGroup>
-              <Field>
-                <FieldLabel>Nama Lengkap</FieldLabel>
-                <FieldContent>
-                  <Input {...form.register("fullName")} placeholder="Nama pasien" />
-                  <FieldError errors={[form.formState.errors.fullName]} />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>No. Telepon</FieldLabel>
-                <FieldContent>
-                  <Input {...form.register("phone")} placeholder="0812..." />
-                  <FieldError errors={[form.formState.errors.phone]} />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>Email (opsional)</FieldLabel>
-                <FieldContent>
-                  <Input type="email" {...form.register("email")} placeholder="email@example.com" />
-                  <FieldError errors={[form.formState.errors.email]} />
-                </FieldContent>
-              </Field>
-              <div className="grid gap-3 lg:grid-cols-2">
-                <Field>
-                  <FieldLabel>Gender (opsional)</FieldLabel>
-                  <FieldContent>
-                    <Input {...form.register("gender")} placeholder="Perempuan" />
-                  </FieldContent>
-                </Field>
-                <Field>
-                  <FieldLabel>Tanggal Lahir (opsional)</FieldLabel>
-                  <FieldContent>
-                    <Input type="date" {...form.register("dateOfBirth")} />
-                  </FieldContent>
-                </Field>
-              </div>
-              <Field>
-                <FieldLabel>Alamat (opsional)</FieldLabel>
-                <FieldContent>
-                  <Input {...form.register("address")} placeholder="Alamat lengkap" />
-                  <FieldDescription>Alamat dapat digunakan untuk kebutuhan admin.</FieldDescription>
-                </FieldContent>
-              </Field>
-            </FieldGroup>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Batal
-              </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "Menyimpan..." : "Simpan"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

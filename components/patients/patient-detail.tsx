@@ -120,6 +120,7 @@ export function PatientDetail() {
       fullName: "",
       phone: "",
       email: "",
+      complaint: "",
       gender: "",
       dateOfBirth: "",
       address: "",
@@ -165,6 +166,7 @@ export function PatientDetail() {
         fullName: patientPayload.patient.fullName,
         phone: patientPayload.patient.phone,
         email: patientPayload.patient.email ?? "",
+        complaint: patientPayload.patient.complaint ?? "",
         gender: patientPayload.patient.gender ?? "",
         dateOfBirth: patientPayload.patient.dateOfBirth ?? "",
         address: patientPayload.patient.address ?? "",
@@ -329,6 +331,10 @@ export function PatientDetail() {
               <span className="text-muted-foreground">Email:</span> {patient.email ?? "-"}
             </div>
             <div>
+              <span className="text-muted-foreground">Complaint:</span>{" "}
+              {patient.complaint ?? "-"}
+            </div>
+            <div>
               <span className="text-muted-foreground">Gender:</span> {patient.gender ?? "-"}
             </div>
             <div>
@@ -361,26 +367,11 @@ export function PatientDetail() {
         />
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue="appointments" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="appointments">Appointments</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Last Visit</CardTitle>
-              <CardDescription>Ringkasan kunjungan terakhir pasien.</CardDescription>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              {summary.lastVisitAt
-                ? `Terakhir berkunjung pada ${formatDate(summary.lastVisitAt)}`
-                : "Belum ada kunjungan yang selesai."}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="appointments">
           <Card>
@@ -542,6 +533,13 @@ export function PatientDetail() {
                 <FieldContent>
                   <Input type="email" {...patientForm.register("email")} />
                   <FieldError errors={[patientForm.formState.errors.email]} />
+                </FieldContent>
+              </Field>
+              <Field>
+                <FieldLabel>Complaint (English)</FieldLabel>
+                <FieldContent>
+                  <Textarea {...patientForm.register("complaint")} rows={3} />
+                  <FieldError errors={[patientForm.formState.errors.complaint]} />
                 </FieldContent>
               </Field>
               <div className="grid gap-3 lg:grid-cols-2">

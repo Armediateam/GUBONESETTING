@@ -10,6 +10,7 @@ import { AddTherapistDialog } from "../add-therapist-dialog";
 type Columns = {
   name: boolean;
   price: boolean;
+  active: boolean;
 };
 
 interface TherapistHeadingProps {

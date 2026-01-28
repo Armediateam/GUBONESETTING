@@ -15,6 +15,7 @@ export const bookingInputSchema = z
     locationId: z.string().min(1, "Position is required"),
     therapistId: z.string().min(1, "Therapist is required"),
     serviceName: z.string().min(1),
+    complaint: z.string().optional(),
     startISO: z.string().min(1),
     endISO: z.string().min(1),
     status: bookingStatusSchema.optional(),

@@ -1,6 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import * as React from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -10,41 +13,42 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 
-export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
+export function LoginForm({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  const router = useRouter()
+  const [email, setEmail] = React.useState("")
+  const [password, setPassword] = React.useState("")
+  const [loading, setLoading] = React.useState(false)
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setError("")
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
     setLoading(true)
-
-    const formData = new FormData(e.currentTarget)
-    const email = formData.get("email")?.toString() || ""
-    const password = formData.get("password")?.toString() || ""
-
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       })
-
-      const data = await res.json()
-
+      const payload = await res.json()
       if (!res.ok) {
-        setError(data.error || "Login gagal")
-      } else {
-        // 🔐 simpan JWT di localStorage
-        localStorage.setItem("token", data.token)
-        // redirect ke dashboard
-        window.location.href = "/dashboard"
+        toast.error(payload?.message || "Login gagal")
+        return
       }
-    } catch (err) {
-      setError("Terjadi kesalahan")
+      localStorage.setItem("token", payload.token)
+      toast.success("Login berhasil")
+      router.push("/dashboard")
+    } catch (error) {
+      console.error(error)
+      toast.error("Server error")
     } finally {
       setLoading(false)
     }
@@ -56,7 +60,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
         <CardHeader>
           <CardTitle>Login to your account</CardTitle>
           <CardDescription>
-            Masukkan email dan password untuk login admin
+            Enter your email below to login to your account
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -64,16 +68,27 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input id="email" name="email" type="email" required />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="m@example.com"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
               </Field>
-
               <Field>
-                <FieldLabel htmlFor="password">Password</FieldLabel>
-                <Input id="password" name="password" type="password" required />
+                <div className="flex items-center">
+                  <FieldLabel htmlFor="password">Password</FieldLabel>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
               </Field>
-
-              {error && <p className="text-sm text-red-500">{error}</p>}
-
               <Field>
                 <Button type="submit" disabled={loading}>
                   {loading ? "Logging in..." : "Login"}

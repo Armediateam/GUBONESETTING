@@ -9,6 +9,7 @@ import { TherapistFooter } from "@/components/therapists/therapist-footer";
 type Columns = {
   name: boolean;
   price: boolean;
+  active: boolean;
 };
 
 export default function TherapistsPage() {
@@ -18,6 +19,7 @@ export default function TherapistsPage() {
   const [visibleColumns, setVisibleColumns] = useState<Columns>({
     name: true,
     price: true,
+    active: true,
   });
 
   return (

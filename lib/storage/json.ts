@@ -19,7 +19,11 @@ const stripMongoId = <T>(doc: T) => {
 
 const collectionNameFromPath = (filePath: string) => {
   const filename = path.basename(filePath)
-  return filename.replace(/\.json$/i, "")
+  const name = filename.replace(/\.json$/i, "")
+  if (name === "locations") {
+    return "positioning"
+  }
+  return name
 }
 
 const readFromMongo = async <T>(filePath: string, fallback: T, options?: ReadOptions<T>) => {
@@ -28,31 +32,6 @@ const readFromMongo = async <T>(filePath: string, fallback: T, options?: ReadOpt
   const docs = await collection.find({}).toArray()
   if (docs.length > 0) {
     return docs.map((doc) => stripMongoId(doc)) as T
-  }
-  try {
-    const raw = await fs.readFile(filePath, "utf8")
-    const parsed = JSON.parse(raw) as T
-    if (Array.isArray(parsed)) {
-      if (parsed.length > 0) {
-        await collection.insertMany(parsed as Record<string, unknown>[])
-      }
-    } else {
-      await collection.insertOne(parsed as Record<string, unknown>)
-    }
-    return parsed
-  } catch {
-    // ignore filesystem migration errors
-  }
-  if (options?.seed !== undefined) {
-    const seed = options.seed
-    if (Array.isArray(seed)) {
-      if (seed.length > 0) {
-        await collection.insertMany(seed as Record<string, unknown>[])
-      }
-    } else {
-      await collection.insertOne(seed as Record<string, unknown>)
-    }
-    return seed
   }
   return fallback
 }

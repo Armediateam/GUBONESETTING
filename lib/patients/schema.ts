@@ -11,6 +11,7 @@ export const patientSchema = z.object({
     .email({ message: "Email tidak valid" })
     .optional()
     .or(z.literal("")),
+  complaint: z.string().optional().or(z.literal("")),
   gender: z.string().optional().or(z.literal("")),
   dateOfBirth: z.string().optional().or(z.literal("")),
   address: z.string().optional().or(z.literal("")),

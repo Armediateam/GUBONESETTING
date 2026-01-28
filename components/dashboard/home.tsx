@@ -2,13 +2,23 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { CalendarPlus, FileClock, UserPlus } from "lucide-react"
+import { useRouter } from "next/navigation"
+import {
+  CalendarCheck2,
+  CalendarClock,
+  CalendarPlus,
+  CircleUserRound,
+  FileClock,
+  UserPlus,
+  XCircle,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -83,21 +93,33 @@ const formatDateTime = (value: string) =>
   }).format(new Date(value))
 
 export function DashboardHome() {
-  const { locations, selectedLocation, selectedLocationId } = useLocation()
+  const router = useRouter()
+  const { locations } = useLocation()
   const [data, setData] = React.useState<DashboardPayload | null>(null)
   const [loading, setLoading] = React.useState(true)
-  const [scope, setScope] = React.useState<"selected" | "all">("selected")
+  const [dashboardLocationId, setDashboardLocationId] = React.useState<string>("all")
+
+  const activeLocations = React.useMemo(
+    () => locations.filter((location) => location.isActive !== false),
+    [locations]
+  )
+  const selectedDashboardLocation =
+    dashboardLocationId !== "all"
+      ? activeLocations.find((location) => location.id === dashboardLocationId) ?? null
+      : null
 
   const loadData = React.useCallback(async () => {
     setLoading(true)
     try {
       const query =
-        scope === "all"
+        dashboardLocationId === "all"
           ? "locationId=all"
-          : selectedLocationId
-            ? `locationId=${selectedLocationId}`
-            : ""
+          : `locationId=${dashboardLocationId}`
       const res = await fetch(`/api/dashboard${query ? `?${query}` : ""}`)
+      if (res.status === 401) {
+        router.replace("/login")
+        return
+      }
       if (!res.ok) {
         throw new Error("Failed to load dashboard")
       }
@@ -109,7 +131,7 @@ export function DashboardHome() {
     } finally {
       setLoading(false)
     }
-  }, [scope, selectedLocationId])
+  }, [dashboardLocationId])
 
   React.useEffect(() => {
     loadData()
@@ -131,33 +153,43 @@ export function DashboardHome() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6">
-      <div className="flex flex-col gap-3 rounded-xl border bg-background p-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            {scope === "all"
-              ? "Summary for all positions"
-              : selectedLocation
-                ? `Active position: ${selectedLocation.name}`
-                : "Select a position to see the summary"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant={scope === "selected" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setScope("selected")}
-            disabled={!selectedLocationId}
-          >
-            Selected Position
-          </Button>
-          <Button
-            variant={scope === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setScope("all")}
-          >
-            All Positions
-          </Button>
+      <div className="rounded-2xl border bg-gradient-to-br from-muted/40 via-background to-muted/10 p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="w-full md:flex-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground">
+              Dashboard
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold">Daily overview</h1>
+            <p className="text-sm text-muted-foreground">
+              {dashboardLocationId === "all"
+                ? "Summary for all positions"
+                : selectedDashboardLocation
+                  ? `Active position: ${
+                      selectedDashboardLocation.city ??
+                      selectedDashboardLocation.name ??
+                      "-"
+                    }`
+                  : "Select a position to see the summary"}
+            </p>
+          </div>
+          <div className="w-full max-w-[240px] md:w-auto md:shrink-0">
+            <Select
+              value={dashboardLocationId}
+              onValueChange={(value) => setDashboardLocationId(value)}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Select position" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All positions</SelectItem>
+                {activeLocations.map((location) => (
+                  <SelectItem key={location.id} value={location.id}>
+                    {location.city ?? location.name ?? "Position"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -168,18 +200,25 @@ export function DashboardHome() {
           ))
         ) : (
           <>
-            <SummaryCard title="Total Patients" value={data.summary.totalPatients} />
+            <SummaryCard
+              title="Total Patients"
+              value={data.summary.totalPatients}
+              icon={<CircleUserRound className="h-5 w-5" />}
+            />
             <SummaryCard
               title="Upcoming Bookings (7 hari)"
               value={data.summary.upcomingBookings}
+              icon={<CalendarClock className="h-5 w-5" />}
             />
             <SummaryCard
               title="Completed (30 hari)"
               value={data.summary.completedBookings}
+              icon={<CalendarCheck2 className="h-5 w-5" />}
             />
             <SummaryCard
               title="Cancelled / No-show (30 hari)"
               value={data.summary.cancelledBookings}
+              icon={<XCircle className="h-5 w-5" />}
             />
           </>
         )}
@@ -192,12 +231,6 @@ export function DashboardHome() {
             <CardDescription>Shortcut ke tugas admin yang sering digunakan.</CardDescription>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button asChild>
-              <Link href="/dashboard/patients">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Add Patient
-              </Link>
-            </Button>
             <Button asChild variant="outline">
               <Link href="/dashboard/bookings">
                 <CalendarPlus className="mr-2 h-4 w-4" />
@@ -236,35 +269,35 @@ export function DashboardHome() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                    <TableHead>Patient</TableHead>
-                    <TableHead>Service</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Location</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.recentBookings.map((booking) => (
-                    <TableRow key={booking.id}>
-                      <TableCell className="font-medium">{booking.patientName}</TableCell>
-                      <TableCell>{booking.serviceName}</TableCell>
-                      <TableCell>{formatDateTime(booking.startISO)}</TableCell>
-                      <TableCell>
-                        <Badge variant={statusVariant[booking.status]}>
-                          {statusLabel[booking.status]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={paymentVariant[booking.paymentStatus]}>
-                          {paymentLabel[booking.paymentStatus]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{booking.locationName}</TableCell>
+                      <TableHead>Patient</TableHead>
+                      <TableHead>Service</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Payment</TableHead>
+                      <TableHead>Location</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {data.recentBookings.map((booking) => (
+                      <TableRow key={booking.id}>
+                        <TableCell className="font-medium">{booking.patientName}</TableCell>
+                        <TableCell>{booking.serviceName}</TableCell>
+                        <TableCell>{formatDateTime(booking.startISO)}</TableCell>
+                        <TableCell>
+                          <Badge variant={statusVariant[booking.status]}>
+                            {statusLabel[booking.status]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={paymentVariant[booking.paymentStatus]}>
+                            {paymentLabel[booking.paymentStatus]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{booking.locationName}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </CardContent>
@@ -273,7 +306,7 @@ export function DashboardHome() {
         <Card>
           <CardHeader>
             <CardTitle>Latest Notes</CardTitle>
-          <CardDescription>Latest notes from patients.</CardDescription>
+            <CardDescription>Latest notes from patients.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {loading || !data ? (
@@ -289,7 +322,7 @@ export function DashboardHome() {
                 <div key={note.id} className="rounded-lg border p-3">
                   <div className="text-sm font-medium">{note.title}</div>
                   <div className="text-xs text-muted-foreground">
-                    {note.patientName} · {formatDateTime(note.createdAt)}
+                    {note.patientName} - {formatDateTime(note.createdAt)}
                   </div>
                 </div>
               ))
@@ -301,12 +334,25 @@ export function DashboardHome() {
   )
 }
 
-function SummaryCard({ title, value }: { title: string; value: number }) {
+function SummaryCard({
+  title,
+  value,
+  icon,
+}: {
+  title: string
+  value: number
+  icon: React.ReactNode
+}) {
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardDescription>{title}</CardDescription>
-        <CardTitle>{value}</CardTitle>
+    <Card className="overflow-hidden">
+      <CardHeader className="space-y-3">
+        <div className="flex items-center justify-between text-muted-foreground">
+          <CardDescription>{title}</CardDescription>
+          <div className="rounded-full border bg-background p-2 text-foreground">
+            {icon}
+          </div>
+        </div>
+        <CardTitle className="text-2xl">{value}</CardTitle>
       </CardHeader>
     </Card>
   )

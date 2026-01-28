@@ -10,9 +10,23 @@ export async function readSchedules(): Promise<ScheduleConfig[]> {
   return readJson<ScheduleConfig[]>(schedulesPath, [])
 }
 
-export async function readSchedule(locationId: string): Promise<Schedule> {
+export async function readScheduleConfig(
+  locationId: string,
+  therapistId: string
+): Promise<ScheduleConfig | null> {
   const schedules = await readSchedules()
-  const match = schedules.find((item) => item.locationId === locationId)
+  return (
+    schedules.find(
+      (item) => item.locationId === locationId && item.therapistId === therapistId
+    ) ?? null
+  )
+}
+
+export async function readSchedule(
+  locationId: string,
+  therapistId: string
+): Promise<Schedule> {
+  const match = await readScheduleConfig(locationId, therapistId)
   if (match) {
     const parsed = scheduleSchema.safeParse(match)
     if (parsed.success) {
@@ -22,14 +36,20 @@ export async function readSchedule(locationId: string): Promise<Schedule> {
   return defaultSchedule
 }
 
-export async function writeSchedule(locationId: string, schedule: Schedule): Promise<void> {
+export async function writeSchedule(
+  locationId: string,
+  therapistId: string,
+  schedule: Schedule
+): Promise<void> {
   const parsed = scheduleSchema.safeParse(schedule)
   if (!parsed.success) {
     throw new Error("Invalid schedule payload")
   }
   const schedules = await readSchedules()
-  const index = schedules.findIndex((item) => item.locationId === locationId)
-  const next: ScheduleConfig = { ...parsed.data, locationId }
+  const index = schedules.findIndex(
+    (item) => item.locationId === locationId && item.therapistId === therapistId
+  )
+  const next: ScheduleConfig = { ...parsed.data, locationId, therapistId }
   if (index === -1) {
     schedules.push(next)
   } else {

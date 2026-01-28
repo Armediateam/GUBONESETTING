@@ -63,15 +63,18 @@ export async function GET(request: Request) {
       ? new Set(filteredBookings.map((booking) => booking.patientId))
       : null
 
-  const recentNotes = [...notes]
-    .filter((note) => (locationPatientIds ? locationPatientIds.has(note.patientId) : true))
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const recentNotes = patients
+    .filter((patient) => !!patient.complaint)
+    .filter((patient) =>
+      locationPatientIds ? locationPatientIds.has(patient.id) : true
+    )
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 6)
-    .map((note) => ({
-      id: note.id,
-      patientName: patientLookup.get(note.patientId) ?? "Unknown",
-      createdAt: note.createdAt,
-      title: note.title ?? "Note",
+    .map((patient) => ({
+      id: patient.id,
+      patientName: patient.fullName,
+      createdAt: patient.updatedAt,
+      title: patient.complaint ?? "Complaint",
     }))
 
   const totalPatients =

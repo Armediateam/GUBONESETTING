@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/breadcrumb"
 
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { LocationSwitcher } from "@/components/locations/location-switcher"
 
 export function SiteHeader() {
   const pathname = usePathname()
@@ -83,7 +82,6 @@ export function SiteHeader() {
 
         {/* ===== Right Area ===== */}
         <div className="ml-auto flex items-center gap-3">
-          <LocationSwitcher />
           <div className="flex items-center gap-2 px-2 py-1.5 text-sm font-medium">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className="tabular-nums">{mounted ? time : "--:--:--"}</span>

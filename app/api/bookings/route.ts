@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 
-import { readSchedule } from "@/lib/schedule/storage"
+import { readSchedule, readScheduleConfig } from "@/lib/schedule/storage"
 import { generateAvailableSlots } from "@/lib/schedule/slots"
 import { bookingInputSchema, bookingStatusSchema } from "@/lib/bookings/schema"
 import { createBooking, readBookings } from "@/lib/bookings/storage"
@@ -90,14 +90,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Therapist is not active" }, { status: 400 })
     }
 
-    const schedule = await readSchedule(parsed.data.locationId)
+    const scheduleConfig = await readScheduleConfig(
+      parsed.data.locationId,
+      parsed.data.therapistId
+    )
+    if (!scheduleConfig) {
+      return NextResponse.json(
+        { message: "Schedule is not set for this position." },
+        { status: 409 }
+      )
+    }
+    const schedule = await readSchedule(parsed.data.locationId, parsed.data.therapistId)
     const existing = await readBookings()
     const slots = generateAvailableSlots({
       schedule,
       rangeStartISO: parsed.data.startISO,
       rangeEndISO: parsed.data.endISO,
       existingBookings: existing
-        .filter((booking) => booking.locationId === parsed.data.locationId)
+        .filter(
+          (booking) =>
+            booking.locationId === parsed.data.locationId &&
+            booking.therapistId === parsed.data.therapistId
+        )
         .map((booking) => ({
           startISO: booking.startISO,
           endISO: booking.endISO,
@@ -120,7 +134,7 @@ export async function POST(request: NextRequest) {
       status: bookingStatusSchema.safeParse(parsed.data.status).success
         ? parsed.data.status
         : "scheduled",
-      locationName: parsed.data.locationName ?? location.name,
+      locationName: parsed.data.locationName ?? location.city ?? location.name,
       locationAddress: parsed.data.locationAddress ?? location.address,
       therapistName: parsed.data.therapistName ?? therapist.name,
     })

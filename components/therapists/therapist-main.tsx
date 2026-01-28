@@ -21,12 +21,14 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 interface Therapist {
   id: string
   name: string
   price: number
+  isActive: boolean
 }
 
 interface TherapistMainProps {
@@ -132,6 +134,33 @@ export function TherapistMain({ search, visibleColumns, refreshKey }: TherapistM
     }
   }
 
+  const handleToggleActive = async (therapist: Therapist, nextActive: boolean) => {
+    setTherapists((prev) =>
+      prev.map((item) => (item.id === therapist.id ? { ...item, isActive: nextActive } : item))
+    )
+    try {
+      const res = await fetch(`/api/therapists/${therapist.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: nextActive }),
+      })
+      const payload = await res.json()
+      if (!res.ok) {
+        throw new Error(payload?.message || "Failed to update therapist")
+      }
+      toast.success("Therapist status updated")
+      loadTherapists()
+    } catch (error) {
+      console.error(error)
+      toast.error("Failed to update therapist status")
+      setTherapists((prev) =>
+        prev.map((item) =>
+          item.id === therapist.id ? { ...item, isActive: !nextActive } : item
+        )
+      )
+    }
+  }
+
   return (
     <>
       <div className="rounded-lg border overflow-hidden">
@@ -140,6 +169,7 @@ export function TherapistMain({ search, visibleColumns, refreshKey }: TherapistM
             <TableRow>
               {visibleColumns.name && <TableHead>Name</TableHead>}
               {visibleColumns.price && <TableHead>Price</TableHead>}
+              {visibleColumns.active && <TableHead>Status</TableHead>}
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
@@ -168,6 +198,19 @@ export function TherapistMain({ search, visibleColumns, refreshKey }: TherapistM
                 <TableRow key={doc.id}>
                   {visibleColumns.name && <TableCell>{doc.name}</TableCell>}
                   {visibleColumns.price && <TableCell>{formatCurrency(doc.price)}</TableCell>}
+                  {visibleColumns.active && (
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={doc.isActive}
+                          onCheckedChange={(value) => handleToggleActive(doc, value)}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {doc.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+                    </TableCell>
+                  )}
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 import { readBookings } from "@/lib/bookings/storage"
-import { readSchedule } from "@/lib/schedule/storage"
+import { readSchedule, readScheduleConfig } from "@/lib/schedule/storage"
 import { generateAvailableSlots } from "@/lib/schedule/slots"
 import { ensureSeedData } from "@/lib/seed/ensure"
 
@@ -9,12 +9,16 @@ export async function GET(request: NextRequest) {
   await ensureSeedData()
   const { searchParams } = new URL(request.url)
   const locationId = searchParams.get("locationId")
+  const therapistId = searchParams.get("therapistId")
   const date = searchParams.get("date")
   const rangeStart = searchParams.get("rangeStart")
   const rangeEnd = searchParams.get("rangeEnd")
 
   if (!locationId) {
     return NextResponse.json({ message: "locationId is required" }, { status: 400 })
+  }
+  if (!therapistId) {
+    return NextResponse.json({ message: "therapistId is required" }, { status: 400 })
   }
 
   if (!date && (!rangeStart || !rangeEnd)) {
@@ -24,7 +28,14 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const schedule = await readSchedule(locationId)
+  const scheduleConfig = await readScheduleConfig(locationId, therapistId)
+  if (!scheduleConfig) {
+    return NextResponse.json(
+      { message: "Schedule is not set for this position." },
+      { status: 409 }
+    )
+  }
+  const schedule = await readSchedule(locationId, therapistId)
   const bookings = await readBookings()
 
   const rangeStartISO = rangeStart
@@ -39,7 +50,10 @@ export async function GET(request: NextRequest) {
     rangeStartISO,
     rangeEndISO,
     existingBookings: bookings
-      .filter((booking) => booking.locationId === locationId)
+      .filter(
+        (booking) =>
+          booking.locationId === locationId && booking.therapistId === therapistId
+      )
       .map((booking) => ({
         startISO: booking.startISO,
         endISO: booking.endISO,

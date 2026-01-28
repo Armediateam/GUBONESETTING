@@ -6,8 +6,6 @@ import { TopLoadingBar } from "@/components/top-loading-bar"
 import { LocationProvider } from "@/components/locations/location-context"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const user = { name: "John Doe", email: "john.doe@example.com", avatar: "/path/to/avatar.jpg" } // Tambahkan data user di sini
-
   return (
     <LocationProvider>
       <SidebarProvider
@@ -16,7 +14,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           "--header-height": "calc(var(--spacing) * 12)",
         } as React.CSSProperties}
       >
-        <AppSidebar user={user} />
+        <AppSidebar />
 
         <SidebarInset>
           <SiteHeader />

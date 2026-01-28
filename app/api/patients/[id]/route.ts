@@ -2,7 +2,13 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import { readBookings, summarizeBookings } from "@/lib/bookings/storage"
 import { patientUpdateSchema } from "@/lib/patients/schema"
-import { readAppointments, readPatients, summarizeAppointments, updatePatient } from "@/lib/patients/storage"
+import {
+  deletePatient,
+  readAppointments,
+  readPatients,
+  summarizeAppointments,
+  updatePatient,
+} from "@/lib/patients/storage"
 import { ensureSeedData } from "@/lib/seed/ensure"
 
 export async function GET(
@@ -62,6 +68,24 @@ export async function PUT(
     return NextResponse.json(updated)
   } catch (error) {
     console.error("Failed to update patient", error)
+    return NextResponse.json({ message: "Server error" }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await ensureSeedData()
+    const resolved = await params
+    const removed = await deletePatient(resolved.id)
+    if (!removed) {
+      return NextResponse.json({ message: "Patient tidak ditemukan" }, { status: 404 })
+    }
+    return NextResponse.json(removed)
+  } catch (error) {
+    console.error("Failed to delete patient", error)
     return NextResponse.json({ message: "Server error" }, { status: 500 })
   }
 }

@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { CalendarIcon, Filter, Plus } from "lucide-react"
+import { CalendarIcon, Filter, MoreVertical, Plus } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -12,6 +12,8 @@ import type { PatientRecord } from "@/lib/patients/schema"
 import type { BookingRecord } from "@/lib/bookings/schema"
 import { bookingStatusSchema } from "@/lib/bookings/schema"
 import type { TherapistRecord } from "@/lib/therapists/schema"
+import type { LocationRecord } from "@/lib/locations/schema"
+import type { ScheduleConfig } from "@/lib/schedule/schema"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -42,8 +44,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useLocation } from "@/components/locations/location-context"
-
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 type SlotDay = {
   date: string
   slots: { startISO: string; endISO: string }[]
@@ -54,8 +60,21 @@ type SlotResponse = {
   items: SlotDay[]
 }
 
+type ServiceItem = {
+  id: string
+  name: string
+  isActive?: boolean
+}
+
 const bookingFormSchema = z.object({
-  patientId: z.string().min(1, "Patient is required"),
+  fullName: z.string().min(1, "Nama wajib diisi"),
+  phone: z
+    .string()
+    .min(6, "Nomor telepon tidak valid")
+    .regex(/^[0-9+\-()\s]+$/, "Nomor telepon tidak valid"),
+  email: z.string().email("Email tidak valid").optional().or(z.literal("")),
+  complaint: z.string().optional().or(z.literal("")),
+  locationId: z.string().min(1, "Position is required"),
   therapistId: z.string().min(1, "Therapist is required"),
   serviceName: z.string().min(1, "Service name is required"),
   dateKey: z.string().min(1, "Date is required"),
@@ -118,26 +137,43 @@ const formatTime = (value: string, timeZone?: string) =>
   }).format(new Date(value))
 
 export function BookingDashboard() {
-  const { selectedLocation, selectedLocationId, locations } = useLocation()
+  const [locations, setLocations] = React.useState<LocationRecord[]>([])
   const [patients, setPatients] = React.useState<PatientRecord[]>([])
   const [bookings, setBookings] = React.useState<BookingRecord[]>([])
   const [therapists, setTherapists] = React.useState<TherapistRecord[]>([])
+  const [services, setServices] = React.useState<ServiceItem[]>([])
+  const [schedulePairs, setSchedulePairs] = React.useState<
+    { locationId: string; therapistId: string }[]
+  >([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [filtersOpen, setFiltersOpen] = React.useState(false)
   const [dialogOpen, setDialogOpen] = React.useState(false)
+  const [bookingStep, setBookingStep] = React.useState(1)
   const [slotLoading, setSlotLoading] = React.useState(false)
   const [slots, setSlots] = React.useState<SlotResponse | null>(null)
+  const [rescheduleOpen, setRescheduleOpen] = React.useState(false)
+  const [rescheduleBooking, setRescheduleBooking] = React.useState<BookingRecord | null>(null)
+  const [rescheduleDate, setRescheduleDate] = React.useState<Date | undefined>()
+  const [rescheduleSlots, setRescheduleSlots] = React.useState<SlotResponse | null>(null)
+  const [rescheduleSlotLoading, setRescheduleSlotLoading] = React.useState(false)
+  const [rescheduleSlotStartISO, setRescheduleSlotStartISO] = React.useState("")
+  const [rescheduleSlotEndISO, setRescheduleSlotEndISO] = React.useState("")
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>()
   const [search, setSearch] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("")
   const [patientFilter, setPatientFilter] = React.useState<string>("")
+  const [locationFilter, setLocationFilter] = React.useState<string>("")
   const [dateFrom, setDateFrom] = React.useState<string>("")
   const [dateTo, setDateTo] = React.useState<string>("")
 
   const form = useForm({
     resolver: zodResolver(bookingFormSchema),
     defaultValues: {
-      patientId: "",
+      fullName: "",
+      phone: "",
+      email: "",
+      complaint: "",
+      locationId: "",
       therapistId: "",
       serviceName: "",
       dateKey: "",
@@ -145,6 +181,40 @@ export function BookingDashboard() {
       slotEndISO: "",
     },
   })
+
+  const fetchLocations = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/locations")
+      if (!res.ok) {
+        throw new Error("Failed to load locations")
+      }
+      const data = await res.json()
+      const items = data.items ?? []
+      setLocations(items)
+    } catch (error) {
+      console.error(error)
+      toast.error("Failed to load positions")
+    }
+  }, [form])
+
+  const fetchSchedules = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/schedules")
+      if (!res.ok) {
+        throw new Error("Failed to load schedules")
+      }
+      const data = await res.json()
+      const items = (data.items ?? []) as ScheduleConfig[]
+      setSchedulePairs(
+        items
+          .filter((item) => item.locationId && item.therapistId)
+          .map((item) => ({ locationId: item.locationId, therapistId: item.therapistId }))
+      )
+    } catch (error) {
+      console.error(error)
+      toast.error("Failed to load schedules")
+    }
+  }, [])
 
   const fetchPatients = React.useCallback(async () => {
     try {
@@ -164,6 +234,27 @@ export function BookingDashboard() {
       toast.error("Failed to load patients")
     }
   }, [])
+
+  const fetchServices = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/services")
+      if (!res.ok) {
+        throw new Error("Failed to load services")
+      }
+      const data = await res.json()
+      const items = data.items ?? []
+      setServices(items)
+      if (!form.getValues("serviceName")) {
+        const firstActive = items.find((item: ServiceItem) => item.isActive !== false)
+        if (firstActive) {
+          form.setValue("serviceName", firstActive.name)
+        }
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error("Failed to load services")
+    }
+  }, [form])
 
   const fetchTherapists = React.useCallback(async () => {
     try {
@@ -186,7 +277,7 @@ export function BookingDashboard() {
       if (search) params.set("q", search)
       if (statusFilter) params.set("status", statusFilter)
       if (patientFilter) params.set("patientId", patientFilter)
-      if (selectedLocationId) params.set("locationId", selectedLocationId)
+      if (locationFilter) params.set("locationId", locationFilter)
       if (dateFrom) params.set("dateFrom", dateFrom)
       if (dateTo) params.set("dateTo", dateTo)
       const res = await fetch(`/api/bookings?${params.toString()}`)
@@ -201,24 +292,35 @@ export function BookingDashboard() {
     } finally {
       setIsLoading(false)
     }
-  }, [search, statusFilter, patientFilter, dateFrom, dateTo, selectedLocationId])
+  }, [search, statusFilter, patientFilter, locationFilter, dateFrom, dateTo])
 
   React.useEffect(() => {
+    fetchLocations()
     fetchPatients()
+    fetchServices()
     fetchTherapists()
-  }, [fetchPatients, fetchTherapists])
+    fetchSchedules()
+  }, [fetchLocations, fetchPatients, fetchServices, fetchTherapists, fetchSchedules])
 
   React.useEffect(() => {
     fetchBookings()
   }, [fetchBookings])
 
+  const watchedLocationId = form.watch("locationId")
+  const watchedTherapistId = form.watch("therapistId")
+  const watchedFullName = form.watch("fullName")
+  const watchedPhone = form.watch("phone")
+  const watchedServiceName = form.watch("serviceName")
+
   React.useEffect(() => {
     const dateKey = selectedDate ? formatDateKey(selectedDate) : ""
+    const locationId = form.getValues("locationId")
+    const therapistId = form.getValues("therapistId")
     form.setValue("dateKey", dateKey)
     form.setValue("slotStartISO", "")
     form.setValue("slotEndISO", "")
 
-    if (!dateKey || !selectedLocationId) {
+    if (!dateKey || !locationId || !therapistId) {
       setSlots(null)
       return
     }
@@ -226,7 +328,9 @@ export function BookingDashboard() {
     const loadSlots = async () => {
       setSlotLoading(true)
       try {
-        const res = await fetch(`/api/slots?date=${dateKey}&locationId=${selectedLocationId}`)
+        const res = await fetch(
+          `/api/slots?date=${dateKey}&locationId=${locationId}&therapistId=${therapistId}`
+        )
         if (!res.ok) {
           throw new Error("Failed to load slots")
         }
@@ -241,11 +345,40 @@ export function BookingDashboard() {
     }
 
     loadSlots()
-  }, [form, selectedDate, selectedLocationId])
+  }, [form, selectedDate, watchedLocationId, watchedTherapistId])
+
+  React.useEffect(() => {
+    if (!rescheduleBooking || !rescheduleDate) {
+      setRescheduleSlots(null)
+      setRescheduleSlotStartISO("")
+      setRescheduleSlotEndISO("")
+      return
+    }
+    const dateKey = formatDateKey(rescheduleDate)
+    const loadSlots = async () => {
+      setRescheduleSlotLoading(true)
+      try {
+        const res = await fetch(
+          `/api/slots?date=${dateKey}&locationId=${rescheduleBooking.locationId}&therapistId=${rescheduleBooking.therapistId}`
+        )
+        if (!res.ok) {
+          throw new Error("Failed to load slots")
+        }
+        const payload = (await res.json()) as SlotResponse
+        setRescheduleSlots(payload)
+      } catch (error) {
+        console.error(error)
+        toast.error("Failed to load slots")
+      } finally {
+        setRescheduleSlotLoading(false)
+      }
+    }
+    loadSlots()
+  }, [rescheduleBooking, rescheduleDate])
 
   const handleCreateBooking = form.handleSubmit(async (values) => {
-      if (!selectedLocationId) {
-        toast.error("Set an active position first")
+      if (!values.locationId) {
+        toast.error("Select a position first")
         return
       }
       if (!values.therapistId) {
@@ -253,17 +386,41 @@ export function BookingDashboard() {
         return
       }
     try {
+      const patientRes = await fetch("/api/patients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: values.fullName,
+          phone: values.phone,
+          email: values.email,
+          complaint: values.complaint,
+        }),
+      })
+      if (!patientRes.ok) {
+        const payload = await patientRes.json()
+        toast.error(payload?.message || "Failed to create patient")
+        return
+      }
+      const patient = (await patientRes.json()) as PatientRecord
+
+      const location = locations.find((item) => item.id === values.locationId)
+      if (!location) {
+        toast.error("Position not found")
+        return
+      }
+
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          patientId: values.patientId,
-          locationId: selectedLocationId,
-          locationName: selectedLocation?.name,
-          locationAddress: selectedLocation?.address,
+          patientId: patient.id,
+          locationId: values.locationId,
+          locationName: location.city ?? location.name,
+          locationAddress: location.address,
           therapistId: values.therapistId,
           therapistName: therapists.find((item) => item.id === values.therapistId)?.name,
           serviceName: values.serviceName,
+          complaint: values.complaint,
           startISO: values.slotStartISO,
           endISO: values.slotEndISO,
           status: "scheduled",
@@ -275,17 +432,82 @@ export function BookingDashboard() {
         return
       }
       await res.json()
+      await fetchPatients()
       await fetchBookings()
       toast.success("Booking created")
       form.reset()
       setSelectedDate(undefined)
       setSlots(null)
       setDialogOpen(false)
+      setBookingStep(1)
     } catch (error) {
       console.error(error)
       toast.error("Server error")
     }
   })
+
+  const handleDeleteBooking = async (bookingId: string) => {
+    const confirmed = window.confirm("Hapus booking ini?")
+    if (!confirmed) return
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}`, { method: "DELETE" })
+      const payload = await res.json()
+      if (!res.ok) {
+        toast.error(payload?.message || "Failed to delete booking")
+        return
+      }
+      toast.success("Booking deleted")
+      await fetchBookings()
+    } catch (error) {
+      console.error(error)
+      toast.error("Server error")
+    }
+  }
+
+  const handleOpenReschedule = (booking: BookingRecord) => {
+    setRescheduleBooking(booking)
+    setRescheduleDate(new Date(booking.startISO))
+    setRescheduleSlotStartISO(booking.startISO)
+    setRescheduleSlotEndISO(booking.endISO)
+    setRescheduleOpen(true)
+  }
+
+  const handleRescheduleSave = async () => {
+    if (!rescheduleBooking || !rescheduleSlotStartISO || !rescheduleSlotEndISO) {
+      toast.error("Select a date and slot")
+      return
+    }
+    try {
+      const res = await fetch(`/api/bookings/${rescheduleBooking.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: rescheduleBooking.patientId,
+          locationId: rescheduleBooking.locationId,
+          therapistId: rescheduleBooking.therapistId,
+          serviceName: rescheduleBooking.serviceName,
+          complaint: rescheduleBooking.complaint,
+          startISO: rescheduleSlotStartISO,
+          endISO: rescheduleSlotEndISO,
+        }),
+      })
+      const payload = await res.json()
+      if (!res.ok) {
+        toast.error(payload?.message || "Failed to reschedule booking")
+        return
+      }
+      toast.success("Booking rescheduled")
+      setRescheduleOpen(false)
+      setRescheduleBooking(null)
+      setRescheduleSlots(null)
+      setRescheduleSlotStartISO("")
+      setRescheduleSlotEndISO("")
+      await fetchBookings()
+    } catch (error) {
+      console.error(error)
+      toast.error("Server error")
+    }
+  }
 
   const slotOptions = React.useMemo(() => {
     if (!slots || !form.getValues("dateKey")) {
@@ -298,6 +520,55 @@ export function BookingDashboard() {
   const patientLookup = React.useMemo(() => {
     return new Map(patients.map((patient) => [patient.id, patient.fullName]))
   }, [patients])
+
+
+  const schedulePairSet = React.useMemo(
+    () => new Set(schedulePairs.map((item) => `${item.locationId}:${item.therapistId}`)),
+    [schedulePairs]
+  )
+
+  const availableTherapists = React.useMemo(() => {
+    const activeTherapists = therapists.filter((therapist) => therapist.isActive)
+    if (!watchedLocationId) {
+      return activeTherapists
+    }
+    return activeTherapists.filter((therapist) =>
+      schedulePairSet.has(`${watchedLocationId}:${therapist.id}`)
+    )
+  }, [therapists, schedulePairSet, watchedLocationId])
+
+  const availableLocations = React.useMemo(() => {
+    const activeLocations = locations.filter((location) => location.isActive !== false)
+    if (!watchedTherapistId) {
+      return activeLocations
+    }
+    return activeLocations.filter((location) =>
+      schedulePairSet.has(`${location.id}:${watchedTherapistId}`)
+    )
+  }, [locations, schedulePairSet, watchedTherapistId])
+
+  const availableServices = React.useMemo(
+    () => services.filter((service) => service.isActive !== false),
+    [services]
+  )
+
+  React.useEffect(() => {
+    const current = form.getValues("locationId")
+    const stillAvailable = availableLocations.some((location) => location.id === current)
+    if (!current || !stillAvailable) {
+      const firstAvailable = availableLocations[0]
+      form.setValue("locationId", firstAvailable?.id ?? "")
+    }
+  }, [form, availableLocations])
+
+  React.useEffect(() => {
+    const current = form.getValues("therapistId")
+    const stillAvailable = availableTherapists.some((therapist) => therapist.id === current)
+    if (!current || !stillAvailable) {
+      const firstAvailable = availableTherapists[0]
+      form.setValue("therapistId", firstAvailable?.id ?? "")
+    }
+  }, [form, availableTherapists])
 
   if (locations.length === 0) {
     return (
@@ -313,21 +584,13 @@ export function BookingDashboard() {
     )
   }
 
-  if (!selectedLocationId) {
-    return (
-      <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-        Set an active position to view and create bookings.
-      </div>
-    )
-  }
-
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6">
       <div className="flex flex-col gap-4 rounded-xl border bg-background p-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-xl font-semibold">Bookings</h1>
           <p className="text-sm text-muted-foreground">
-            Manage bookings for position {selectedLocation?.name ?? "-"}.
+            Manage bookings across all positions.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -343,7 +606,7 @@ export function BookingDashboard() {
       </div>
 
       {filtersOpen && (
-        <div className="grid gap-3 rounded-xl border bg-muted/40 p-4 md:grid-cols-5">
+        <div className="grid gap-3 rounded-xl border bg-muted/40 p-4 md:grid-cols-6">
           <div>
             <FieldLabel>Search</FieldLabel>
             <Input
@@ -391,6 +654,25 @@ export function BookingDashboard() {
             </Select>
           </div>
           <div>
+            <FieldLabel>Position</FieldLabel>
+            <Select
+              value={locationFilter}
+              onValueChange={(value) => setLocationFilter(value === "all" ? "" : value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All positions" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {availableLocations.map((location) => (
+                  <SelectItem key={location.id} value={location.id}>
+                    {location.city ?? location.name ?? "Position"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <FieldLabel>Date From</FieldLabel>
             <Input
               type="date"
@@ -425,6 +707,7 @@ export function BookingDashboard() {
             <TableHeader>
               <TableRow>
                 <TableHead>Patient</TableHead>
+                <TableHead>Complaint</TableHead>
                 <TableHead>Service</TableHead>
                 <TableHead>Date & Time</TableHead>
                 <TableHead>Status</TableHead>
@@ -432,6 +715,7 @@ export function BookingDashboard() {
                 <TableHead>Therapist</TableHead>
                 <TableHead>Position</TableHead>
                 <TableHead>Created</TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -440,6 +724,7 @@ export function BookingDashboard() {
                   <TableCell className="font-medium">
                     {patientLookup.get(booking.patientId) ?? "Unknown"}
                   </TableCell>
+                  <TableCell>{booking.complaint ?? "-"}</TableCell>
                   <TableCell>{booking.serviceName}</TableCell>
                   <TableCell>{formatDateTime(booking.startISO)}</TableCell>
                   <TableCell>
@@ -453,9 +738,29 @@ export function BookingDashboard() {
                     </Badge>
                   </TableCell>
                   <TableCell>{booking.therapistName ?? "-"}</TableCell>
-                  <TableCell>{booking.locationName ?? selectedLocation?.name ?? "-"}</TableCell>
+                  <TableCell>{booking.locationName ?? "-"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatDateTime(booking.createdAt)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" aria-label="Booking actions">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleOpenReschedule(booking)}>
+                          Reschedule
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => handleDeleteBooking(booking.id)}
+                        >
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
@@ -464,159 +769,386 @@ export function BookingDashboard() {
         )}
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl">
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open)
+          if (!open) {
+            setBookingStep(1)
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Create Booking</DialogTitle>
-            <DialogDescription>Select a patient and an available slot.</DialogDescription>
+            <DialogDescription>
+              Lengkapi data pasien, pilih lokasi & therapist, lalu tentukan jadwal.
+            </DialogDescription>
+            <div className="mt-3 flex gap-2">
+              {[1, 2, 3].map((index) => (
+                <div
+                  key={index}
+                  className={`h-1 flex-1 rounded-full ${
+                    bookingStep === index ? "bg-primary" : "bg-muted"
+                  }`}
+                />
+              ))}
+            </div>
           </DialogHeader>
-          <form onSubmit={handleCreateBooking} className="space-y-4">
-            <input type="hidden" {...form.register("patientId")} />
+          <form onSubmit={handleCreateBooking} className="space-y-6">
+            <input type="hidden" {...form.register("locationId")} />
             <input type="hidden" {...form.register("therapistId")} />
             <input type="hidden" {...form.register("dateKey")} />
             <input type="hidden" {...form.register("slotStartISO")} />
             <input type="hidden" {...form.register("slotEndISO")} />
-            <FieldGroup>
-              <Field>
-                <FieldLabel>Patient</FieldLabel>
-                <FieldContent>
+            <div className="space-y-4">
+              {bookingStep === 1 && (
+                <div className="rounded-xl border bg-muted/30 p-4">
+                  <div className="mb-3 text-sm font-medium">Patient details</div>
+                  <FieldGroup>
+                    <Field>
+                      <FieldLabel>Full Name</FieldLabel>
+                      <FieldContent>
+                        <Input placeholder="Nama lengkap" {...form.register("fullName")} />
+                        <FieldError errors={[form.formState.errors.fullName]} />
+                      </FieldContent>
+                    </Field>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <Field>
+                        <FieldLabel>Phone Number</FieldLabel>
+                        <FieldContent>
+                          <Input placeholder="08123456789" {...form.register("phone")} />
+                          <FieldError errors={[form.formState.errors.phone]} />
+                        </FieldContent>
+                      </Field>
+                      <Field>
+                        <FieldLabel>Email (optional)</FieldLabel>
+                        <FieldContent>
+                          <Input
+                            type="email"
+                            placeholder="email@contoh.com"
+                            {...form.register("email")}
+                          />
+                          <FieldError errors={[form.formState.errors.email]} />
+                        </FieldContent>
+                      </Field>
+                    </div>
+                    <Field>
+                      <FieldLabel>Complaint (English)</FieldLabel>
+                      <FieldContent>
+                        <Input
+                          placeholder="Describe the complaint in English"
+                          {...form.register("complaint")}
+                        />
+                        <FieldError errors={[form.formState.errors.complaint]} />
+                      </FieldContent>
+                    </Field>
+                  </FieldGroup>
+                </div>
+              )}
+
+              {bookingStep === 2 && (
+                <div className="rounded-xl border bg-muted/30 p-4">
+                  <div className="mb-3 text-sm font-medium">Service & therapist</div>
+                  <FieldGroup>
+                    <Field>
+                      <FieldLabel>Position</FieldLabel>
+                      <FieldContent>
+                        {availableLocations.length === 0 ? (
+                          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                            Add an active position first.
+                          </div>
+                        ) : (
+                          <Select
+                            value={form.watch("locationId")}
+                            onValueChange={(value) => form.setValue("locationId", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a position" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableLocations.map((location) => (
+                                <SelectItem key={location.id} value={location.id}>
+                                  {location.city ?? location.name ?? "Position"}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        <FieldError errors={[form.formState.errors.locationId]} />
+                      </FieldContent>
+                    </Field>
+                    <Field>
+                      <FieldLabel>Therapist</FieldLabel>
+                      <FieldContent>
+                      {availableTherapists.length === 0 ? (
+                        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                          No therapist available for this position.
+                        </div>
+                      ) : (
+                        <Select
+                          value={form.watch("therapistId")}
+                          onValueChange={(value) => form.setValue("therapistId", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a therapist" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableTherapists.map((therapist) => (
+                              <SelectItem key={therapist.id} value={therapist.id}>
+                                {therapist.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        )}
+                        <FieldError errors={[form.formState.errors.therapistId]} />
+                      </FieldContent>
+                    </Field>
+                    <Field>
+                      <FieldLabel>Service Name</FieldLabel>
+                      <FieldContent>
+                        {availableServices.length === 0 ? (
+                          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                            Add a service first.
+                          </div>
+                        ) : (
+                          <Select
+                            value={form.watch("serviceName")}
+                            onValueChange={(value) => form.setValue("serviceName", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a service" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableServices.map((service) => (
+                                <SelectItem key={service.id} value={service.name}>
+                                  {service.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        <FieldError errors={[form.formState.errors.serviceName]} />
+                      </FieldContent>
+                    </Field>
+                  </FieldGroup>
+                </div>
+              )}
+
+              {bookingStep === 3 && (
+                <div className="rounded-xl border bg-muted/30 p-4">
+                  <div className="mb-3 text-sm font-medium">Schedule</div>
+                  <FieldGroup>
+                    <Field>
+                      <FieldLabel>Date</FieldLabel>
+                      <FieldContent>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="w-full justify-start text-left font-normal"
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {selectedDate ? formatDateKey(selectedDate) : "Select date"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={selectedDate}
+                              onSelect={setSelectedDate}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FieldError errors={[form.formState.errors.dateKey]} />
+                      </FieldContent>
+                    </Field>
+                    <Field>
+                      <FieldLabel>Available Slots</FieldLabel>
+                      <FieldContent>
+                        {!selectedDate ? (
+                          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                            Select a date first.
+                          </div>
+                        ) : !form.getValues("locationId") ||
+                          !form.getValues("therapistId") ? (
+                          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                            Select a position and therapist first.
+                          </div>
+                        ) : slotLoading ? (
+                          <Skeleton className="h-10 w-full" />
+                        ) : slotOptions.length === 0 ? (
+                          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                            No slots available.
+                          </div>
+                        ) : (
+                          <Select
+                            value={form.watch("slotStartISO")}
+                            onValueChange={(value) => {
+                              const slot = slotOptions.find((item) => item.startISO === value)
+                              form.setValue("slotStartISO", value)
+                              form.setValue("slotEndISO", slot?.endISO ?? "")
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a slot" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {slotOptions.map((slot) => (
+                                <SelectItem key={slot.startISO} value={slot.startISO}>
+                                  {formatTime(slot.startISO, slots?.timeZone)} -{" "}
+                                  {formatTime(slot.endISO, slots?.timeZone)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        <FieldError errors={[form.formState.errors.slotStartISO]} />
+                      </FieldContent>
+                    </Field>
+                  </FieldGroup>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (bookingStep === 1) {
+                    setDialogOpen(false)
+                    setBookingStep(1)
+                  } else {
+                    setBookingStep((prev) => Math.max(1, prev - 1))
+                  }
+                }}
+              >
+                {bookingStep === 1 ? "Cancel" : "Back"}
+              </Button>
+              {bookingStep < 3 ? (
+                <Button
+                  type="button"
+                  onClick={() => setBookingStep((prev) => Math.min(3, prev + 1))}
+                  disabled={
+                    (bookingStep === 1 &&
+                      (!watchedFullName?.trim() || !watchedPhone?.trim())) ||
+                    (bookingStep === 2 &&
+                      (!watchedLocationId ||
+                        !watchedTherapistId ||
+                        !watchedServiceName?.trim()))
+                  }
+                >
+                  Next
+                </Button>
+              ) : (
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? "Saving..." : "Save Booking"}
+                </Button>
+              )}
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={rescheduleOpen}
+        onOpenChange={(open) => {
+          setRescheduleOpen(open)
+          if (!open) {
+            setRescheduleBooking(null)
+            setRescheduleSlots(null)
+            setRescheduleSlotStartISO("")
+            setRescheduleSlotEndISO("")
+          }
+        }}
+      >
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Reschedule Booking</DialogTitle>
+            <DialogDescription>Pilih tanggal dan slot baru.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Field>
+              <FieldLabel>Date</FieldLabel>
+              <FieldContent>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {rescheduleDate ? formatDateKey(rescheduleDate) : "Select date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={rescheduleDate}
+                      onSelect={setRescheduleDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>Available Slots</FieldLabel>
+              <FieldContent>
+                {!rescheduleDate ? (
+                  <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                    Select a date first.
+                  </div>
+                ) : rescheduleSlotLoading ? (
+                  <Skeleton className="h-10 w-full" />
+                ) : (rescheduleSlots?.items?.find((item) =>
+                    item.date === formatDateKey(rescheduleDate)
+                  )?.slots ?? []).length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                    No slots available.
+                  </div>
+                ) : (
                   <Select
-                    value={form.watch("patientId")}
-                    onValueChange={(value) => form.setValue("patientId", value)}
+                    value={rescheduleSlotStartISO}
+                    onValueChange={(value) => {
+                      const slot =
+                        rescheduleSlots?.items
+                          ?.find((item) => item.date === formatDateKey(rescheduleDate))
+                          ?.slots?.find((item) => item.startISO === value) ?? null
+                      setRescheduleSlotStartISO(value)
+                      setRescheduleSlotEndISO(slot?.endISO ?? "")
+                    }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a patient" />
+                      <SelectValue placeholder="Select a slot" />
                     </SelectTrigger>
                     <SelectContent>
-                      {patients.map((patient) => (
-                        <SelectItem key={patient.id} value={patient.id}>
-                          {patient.fullName}
+                      {(rescheduleSlots?.items?.find(
+                        (item) => item.date === formatDateKey(rescheduleDate)
+                      )?.slots ?? []).map((slot) => (
+                        <SelectItem key={slot.startISO} value={slot.startISO}>
+                          {formatTime(slot.startISO, rescheduleSlots?.timeZone)} -{" "}
+                          {formatTime(slot.endISO, rescheduleSlots?.timeZone)}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <FieldError errors={[form.formState.errors.patientId]} />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>Service Name</FieldLabel>
-                <FieldContent>
-                  <Input
-                    placeholder="Therapy session"
-                    {...form.register("serviceName")}
-                  />
-                  <FieldError errors={[form.formState.errors.serviceName]} />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>Date</FieldLabel>
-                <FieldContent>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedDate ? formatDateKey(selectedDate) : "Select date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={setSelectedDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FieldError errors={[form.formState.errors.dateKey]} />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>Available Slots</FieldLabel>
-                <FieldContent>
-                  {!selectedDate ? (
-                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                      Select a date first.
-                    </div>
-                  ) : slotLoading ? (
-                    <Skeleton className="h-10 w-full" />
-                  ) : slotOptions.length === 0 ? (
-                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                      No slots available.
-                    </div>
-                  ) : (
-                    <Select
-                      value={form.watch("slotStartISO")}
-                      onValueChange={(value) => {
-                        const slot = slotOptions.find((item) => item.startISO === value)
-                        form.setValue("slotStartISO", value)
-                        form.setValue("slotEndISO", slot?.endISO ?? "")
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a slot" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {slotOptions.map((slot) => (
-                          <SelectItem key={slot.startISO} value={slot.startISO}>
-                            {formatTime(slot.startISO, slots?.timeZone)} -{" "}
-                            {formatTime(slot.endISO, slots?.timeZone)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  <FieldError errors={[form.formState.errors.slotStartISO]} />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>Therapist</FieldLabel>
-                <FieldContent>
-                  {therapists.length === 0 ? (
-                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                      Add a therapist first.
-                    </div>
-                  ) : (
-                    <Select
-                      value={form.watch("therapistId")}
-                      onValueChange={(value) => form.setValue("therapistId", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a therapist" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {therapists.map((therapist) => (
-                          <SelectItem key={therapist.id} value={therapist.id}>
-                            {therapist.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  <FieldError errors={[form.formState.errors.therapistId]} />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>Active Position</FieldLabel>
-                <FieldContent>
-                  <div className="rounded-lg border px-3 py-2 text-sm">
-                    {selectedLocation?.name ?? "-"}
-                  </div>
-                </FieldContent>
-              </Field>
-            </FieldGroup>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "Saving..." : "Save Booking"}
-              </Button>
-            </DialogFooter>
-          </form>
+                )}
+              </FieldContent>
+            </Field>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setRescheduleOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleRescheduleSave}>
+              Save
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

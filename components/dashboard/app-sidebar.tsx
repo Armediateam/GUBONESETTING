@@ -107,9 +107,31 @@ const data = {
 
 // AppSidebar.tsx
 export function AppSidebar({
-  user, // Menerima user sebagai prop
   ...props
-}: React.ComponentProps<typeof Sidebar> & { user: { name: string; email: string; avatar: string } }) {
+}: React.ComponentProps<typeof Sidebar>) {
+  const [user, setUser] = React.useState({
+    name: "User",
+    email: "",
+    avatar: "",
+  })
+
+  React.useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const res = await fetch("/api/auth/therapists/me")
+        if (!res.ok) return
+        const payload = await res.json()
+        setUser({
+          name: payload.name ?? "User",
+          email: payload.email ?? "",
+          avatar: payload.photo ?? "",
+        })
+      } catch {
+        // ignore user load errors in sidebar
+      }
+    }
+    loadUser()
+  }, [])
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       {/* HEADER */}

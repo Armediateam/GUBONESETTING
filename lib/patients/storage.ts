@@ -12,6 +12,7 @@ import type {
 } from "./schema"
 import { appointmentSchema, noteSchema, patientSchema, patientUpdateSchema } from "./schema"
 import { readJson, writeJsonAtomic } from "@/lib/storage/json"
+import { readBookings, writeBookings } from "@/lib/bookings/storage"
 
 const dataDir = path.join(process.cwd(), "data")
 const patientsPath = path.join(dataDir, "patients.json")
@@ -89,10 +90,37 @@ export const createPatient = async (input: PatientFormValues) => {
   }
   const now = new Date().toISOString()
   const patients = await readPatients()
+  const normalizedPhone = parsed.data.phone.replace(/[^0-9+]/g, "")
+  const normalizedEmail = (parsed.data.email || "").toLowerCase()
+  const normalizedName = parsed.data.fullName.trim().toLowerCase()
+  const existing = patients.find((patient) => {
+    if (!normalizedPhone || !normalizedEmail) {
+      return false
+    }
+    const phoneMatch = patient.phone.replace(/[^0-9+]/g, "") === normalizedPhone
+    const emailMatch = (patient.email || "").toLowerCase() === normalizedEmail
+    return phoneMatch && emailMatch
+  })
+  if (existing) {
+    const updated: PatientRecord = {
+      ...existing,
+      phone: existing.phone || parsed.data.phone,
+      email: existing.email || (parsed.data.email || undefined),
+      complaint: parsed.data.complaint || existing.complaint,
+      updatedAt: now,
+    }
+    const index = patients.findIndex((patient) => patient.id === existing.id)
+    if (index >= 0) {
+      patients[index] = updated
+      await writePatients(patients)
+    }
+    return updated
+  }
   const patient: PatientRecord = {
     id: crypto.randomUUID(),
     ...parsed.data,
     email: parsed.data.email || undefined,
+    complaint: parsed.data.complaint || undefined,
     gender: parsed.data.gender || undefined,
     dateOfBirth: parsed.data.dateOfBirth || undefined,
     address: parsed.data.address || undefined,
@@ -118,6 +146,10 @@ export const updatePatient = async (id: string, input: PatientUpdateValues) => {
     ...patients[index],
     ...parsed.data,
     email: parsed.data.email === "" ? undefined : parsed.data.email ?? patients[index].email,
+    complaint:
+      parsed.data.complaint === ""
+        ? undefined
+        : parsed.data.complaint ?? patients[index].complaint,
     gender: parsed.data.gender === "" ? undefined : parsed.data.gender ?? patients[index].gender,
     dateOfBirth:
       parsed.data.dateOfBirth === ""
@@ -198,6 +230,30 @@ export const deleteNote = async (noteId: string) => {
   }
   await writeNotes(next)
   return true
+}
+
+export const deletePatient = async (id: string) => {
+  const patients = await readPatients()
+  const index = patients.findIndex((patient) => patient.id === id)
+  if (index === -1) {
+    return null
+  }
+  const [removed] = patients.splice(index, 1)
+  await writePatients(patients)
+
+  const notes = await readNotes()
+  const nextNotes = notes.filter((note) => note.patientId !== id)
+  if (nextNotes.length !== notes.length) {
+    await writeNotes(nextNotes)
+  }
+
+  const bookings = await readBookings()
+  const nextBookings = bookings.filter((booking) => booking.patientId !== id)
+  if (nextBookings.length !== bookings.length) {
+    await writeBookings(nextBookings)
+  }
+
+  return removed
 }
 
 export const paginate = <T>(items: T[], page: number, pageSize: number) => {

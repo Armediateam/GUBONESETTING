@@ -173,6 +173,7 @@ export type Schedule = z.infer<typeof scheduleSchema>
 
 export const scheduleConfigSchema = scheduleSchema.extend({
   locationId: z.string().min(1, { message: "Position is required" }),
+  therapistId: z.string().min(1, { message: "Therapist is required" }),
 })
 
 export type ScheduleConfig = z.infer<typeof scheduleConfigSchema>

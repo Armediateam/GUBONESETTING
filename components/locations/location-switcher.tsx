@@ -37,7 +37,7 @@ export function LocationSwitcher() {
       <SelectContent>
         {activeLocations.map((location) => (
           <SelectItem key={location.id} value={location.id}>
-            {location.name ?? "Position"}
+            {location.city ?? location.name ?? "Position"}
           </SelectItem>
         ))}
       </SelectContent>

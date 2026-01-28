@@ -49,6 +49,7 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { useLocation } from "@/components/locations/location-context"
+import type { TherapistRecord } from "@/lib/therapists/schema"
 
 const defaultRange = { start: "09:00", end: "17:00" }
 
@@ -114,7 +115,9 @@ const emptySchedule: Schedule = {
 }
 
 export function ScheduleMain() {
-  const { selectedLocation, selectedLocationId, locations } = useLocation()
+  const { selectedLocation, selectedLocationId, locations, setSelectedLocationId } = useLocation()
+  const [therapists, setTherapists] = React.useState<TherapistRecord[]>([])
+  const [selectedTherapistId, setSelectedTherapistId] = React.useState<string | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [isSaving, setIsSaving] = React.useState(false)
   const [lastSavedAt, setLastSavedAt] = React.useState<string | null>(null)
@@ -145,15 +148,46 @@ export function ScheduleMain() {
 
   React.useEffect(() => {
     let active = true
+    const loadTherapists = async () => {
+      try {
+        const res = await fetch("/api/therapists")
+        if (!res.ok) {
+          throw new Error("Failed to load therapists")
+        }
+        const data = await res.json()
+        const items = data.items ?? []
+        if (active) {
+          setTherapists(items)
+          if (!selectedTherapistId && items.length > 0) {
+            setSelectedTherapistId(items[0].id)
+          }
+        }
+      } catch (error) {
+        console.error(error)
+        toast.error("Failed to load therapists")
+      }
+    }
+    loadTherapists()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  React.useEffect(() => {
+    let active = true
 
     const loadSchedule = async () => {
-      if (!selectedLocationId) {
+      if (!selectedLocationId || !selectedTherapistId) {
         setIsLoading(false)
+        setSavedSchedule(null)
+        reset(emptySchedule)
         return
       }
       setIsLoading(true)
       try {
-        const res = await fetch(`/api/schedule?locationId=${selectedLocationId}`)
+        const res = await fetch(
+          `/api/schedule?locationId=${selectedLocationId}&therapistId=${selectedTherapistId}`
+        )
         if (!res.ok) {
           throw new Error("Failed to load schedule")
         }
@@ -179,7 +213,7 @@ export function ScheduleMain() {
     return () => {
       active = false
     }
-  }, [reset, selectedLocationId])
+  }, [reset, selectedLocationId, selectedTherapistId])
 
   React.useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {
@@ -199,13 +233,18 @@ export function ScheduleMain() {
       toast.error("Set an active position first")
       return
     }
+    if (!selectedTherapistId) {
+      toast.error("Select a therapist first")
+      return
+    }
     setIsSaving(true)
     try {
       const payload: Schedule = {
         ...values,
         weekly: emptyWeekly(),
       }
-      const res = await fetch(`/api/schedule?locationId=${selectedLocationId}`,
+      const res = await fetch(
+        `/api/schedule?locationId=${selectedLocationId}&therapistId=${selectedTherapistId}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -315,10 +354,10 @@ export function ScheduleMain() {
     )
   }
 
-  if (!selectedLocationId) {
+  if (therapists.length === 0) {
     return (
       <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-        Set an active position to manage the schedule.
+        No therapists yet. Add a therapist before managing the schedule.
       </div>
     )
   }
@@ -333,9 +372,6 @@ export function ScheduleMain() {
           <h1 className="text-xl font-semibold">Date-based availability</h1>
         </div>
         <div className="flex w-full flex-col gap-2 md:items-end lg:w-auto lg:flex-row lg:items-center lg:justify-end">
-          <div className="text-xs text-muted-foreground md:text-sm md:text-right lg:whitespace-nowrap">
-            Position: {selectedLocation?.name ?? "-"}
-          </div>
           <div className="text-xs text-muted-foreground md:text-sm md:text-right lg:whitespace-nowrap">
             {lastSavedAt
               ? `Last saved: ${new Date(lastSavedAt).toLocaleString("id-ID")}`
@@ -369,11 +405,59 @@ export function ScheduleMain() {
           <Card>
             <CardHeader>
               <CardTitle>Pick a date</CardTitle>
-              <CardDescription>
-                Set opening hours for specific dates only.
-              </CardDescription>
+              <CardDescription>Set opening hours for specific dates only.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+              <div className="lg:col-span-2">
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <div className="mb-3 text-sm font-medium">Schedule scope</div>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <Field>
+                      <FieldLabel>Position</FieldLabel>
+                      <FieldContent>
+                        <Select
+                          value={selectedLocationId ?? ""}
+                          onValueChange={(value) => setSelectedLocationId(value || null)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select position" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {locations.map((location) => (
+                              <SelectItem key={location.id} value={location.id}>
+                                {location.city ?? location.name ?? "Position"}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FieldContent>
+                    </Field>
+                    <Field>
+                      <FieldLabel>Therapist</FieldLabel>
+                      <FieldContent>
+                        <Select
+                          value={selectedTherapistId ?? ""}
+                          onValueChange={(value) => setSelectedTherapistId(value || null)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select therapist" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {therapists.map((therapist) => (
+                              <SelectItem key={therapist.id} value={therapist.id}>
+                                {therapist.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FieldContent>
+                    </Field>
+                  </div>
+                  <div className="mt-3 text-xs text-muted-foreground">
+                    Schedule berlaku untuk kombinasi position + therapist yang dipilih.
+                  </div>
+                </div>
+              </div>
               <div className="space-y-4">
                 <Calendar
                   mode="single"
