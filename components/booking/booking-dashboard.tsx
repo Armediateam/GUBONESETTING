@@ -10,7 +10,7 @@ import { z } from "zod"
 
 import type { PatientRecord } from "@/lib/patients/schema"
 import type { BookingRecord } from "@/lib/bookings/schema"
-import { bookingStatusSchema } from "@/lib/bookings/schema"
+import { bookingStatusSchema, paymentStatusSchema } from "@/lib/bookings/schema"
 import type { TherapistRecord } from "@/lib/therapists/schema"
 import type { LocationRecord } from "@/lib/locations/schema"
 import type { ScheduleConfig } from "@/lib/schedule/schema"
@@ -48,6 +48,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 type SlotDay = {
@@ -264,7 +268,7 @@ export function BookingDashboard() {
         throw new Error("Failed to load therapists")
       }
       const data = await res.json()
-      setTherapists((data.items ?? []).filter((item: TherapistRecord) => item.isActive))
+      setTherapists(data.items ?? [])
     } catch (error) {
       console.error(error)
       toast.error("Failed to load therapists")
@@ -470,6 +474,29 @@ export function BookingDashboard() {
     }
   }
 
+  const handleUpdatePaymentStatus = async (
+    bookingId: string,
+    paymentStatus: (typeof paymentStatusSchema)["options"][number]
+  ) => {
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentStatus }),
+      })
+      const payload = await res.json()
+      if (!res.ok) {
+        toast.error(payload?.message || "Failed to update payment status")
+        return
+      }
+      toast.success("Payment status updated")
+      await fetchBookings()
+    } catch (error) {
+      console.error(error)
+      toast.error("Server error")
+    }
+  }
+
   const handleOpenReschedule = (booking: BookingRecord) => {
     setRescheduleBooking(booking)
     setRescheduleDate(new Date(booking.startISO))
@@ -526,6 +553,10 @@ export function BookingDashboard() {
   const patientLookup = React.useMemo(() => {
     return new Map(patients.map((patient) => [patient.id, patient.fullName]))
   }, [patients])
+
+  const therapistLookup = React.useMemo(() => {
+    return new Map(therapists.map((therapist) => [therapist.id, therapist.name]))
+  }, [therapists])
 
 
   const schedulePairSet = React.useMemo(
@@ -747,7 +778,9 @@ export function BookingDashboard() {
                       {paymentLabel[booking.paymentStatus ?? "pending"]}
                     </Badge>
                   </TableCell>
-                  <TableCell>{booking.therapistName ?? "-"}</TableCell>
+                  <TableCell>
+                    {therapistLookup.get(booking.therapistId) ?? booking.therapistName ?? "-"}
+                  </TableCell>
                   <TableCell>{booking.locationName ?? "-"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatDateTime(booking.createdAt)}
@@ -763,6 +796,21 @@ export function BookingDashboard() {
                         <DropdownMenuItem onClick={() => handleOpenReschedule(booking)}>
                           Reschedule
                         </DropdownMenuItem>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>Update payment</DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            {paymentStatusSchema.options.map((status) => (
+                              <DropdownMenuItem
+                                key={status}
+                                disabled={(booking.paymentStatus ?? "pending") === status}
+                                onClick={() => handleUpdatePaymentStatus(booking.id, status)}
+                              >
+                                {paymentLabel[status]}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive"
                           onClick={() => handleDeleteBooking(booking.id)}
