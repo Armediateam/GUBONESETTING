@@ -18,11 +18,15 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 
 export function SiteHeader() {
   const pathname = usePathname()
-  const [time, setTime] = useState<string>("--:--:--")
-  const [mounted, setMounted] = useState(false)
+  const [time, setTime] = useState<string>(() =>
+    new Date().toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
+  )
 
   useEffect(() => {
-    setMounted(true)
     const interval = setInterval(() => {
       setTime(
         new Date().toLocaleTimeString("id-ID", {
@@ -84,7 +88,7 @@ export function SiteHeader() {
         <div className="ml-auto flex items-center gap-3">
           <div className="flex items-center gap-2 px-2 py-1.5 text-sm font-medium">
             <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="tabular-nums">{mounted ? time : "--:--:--"}</span>
+            <span className="tabular-nums">{time}</span>
           </div>
         </div>
       </div>

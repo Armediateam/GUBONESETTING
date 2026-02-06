@@ -43,6 +43,35 @@ type SlotResponse = {
   items: SlotDay[]
 }
 
+async function fetchSlotResponse(url: string) {
+  const res = await fetch(url)
+  const contentType = res.headers.get("content-type") ?? ""
+
+  const payload = contentType.includes("application/json")
+    ? await res.json().catch(() => null)
+    : await res.text().catch(() => null)
+
+  if (res.ok) {
+    return { ok: true as const, data: payload as SlotResponse }
+  }
+
+  const messageFromJson =
+    payload &&
+    typeof payload === "object" &&
+    "message" in payload &&
+    typeof (payload as { message?: unknown }).message === "string"
+      ? (payload as { message: string }).message
+      : null
+
+  const message =
+    messageFromJson ||
+    (typeof payload === "string" ? payload : null) ||
+    res.statusText ||
+    "Request failed"
+
+  return { ok: false as const, status: res.status, message: String(message) }
+}
+
 type ServiceItem = {
   id: string
   name: string
@@ -102,6 +131,7 @@ export default function BookingForm() {
   const [step, setStep] = React.useState(1)
   const [loading, setLoading] = React.useState(true)
   const [slotsLoading, setSlotsLoading] = React.useState(false)
+  const [calendarSlotsLoading, setCalendarSlotsLoading] = React.useState(false)
 
   const [locations, setLocations] = React.useState<LocationRecord[]>([])
   const [therapists, setTherapists] = React.useState<TherapistRecord[]>([])
@@ -110,7 +140,9 @@ export default function BookingForm() {
     { locationId: string; therapistId: string }[]
   >([])
   const [slots, setSlots] = React.useState<SlotResponse | null>(null)
+  const [slotNotice, setSlotNotice] = React.useState<string | null>(null)
   const [calendarSlots, setCalendarSlots] = React.useState<SlotResponse | null>(null)
+  const [calendarSlotNotice, setCalendarSlotNotice] = React.useState<string | null>(null)
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>()
   const [calendarMonth, setCalendarMonth] = React.useState<Date>(new Date())
 
@@ -205,16 +237,19 @@ export default function BookingForm() {
   }, [therapists, schedulePairSet, watchedLocationId])
 
   const availableLocations = React.useMemo(() => {
-    if (!watchedTherapistId) return locations
-    return locations.filter((location) =>
-      schedulePairSet.has(`${location.id}:${watchedTherapistId}`)
-    )
-  }, [locations, schedulePairSet, watchedTherapistId])
+    return locations
+  }, [locations])
 
   const availableServices = React.useMemo(
     () => services.filter((service) => service.isActive !== false),
     [services]
   )
+
+  React.useEffect(() => {
+    setSelectedDate(undefined)
+    setSlots(null)
+    setSlotNotice(null)
+  }, [watchedLocationId, watchedTherapistId])
 
   React.useEffect(() => {
     const current = form.getValues("locationId")
@@ -244,20 +279,35 @@ export default function BookingForm() {
 
     if (!dateKey || !locationId || !therapistId) {
       setSlots(null)
+      setSlotNotice(null)
       return
     }
 
     const loadSlots = async () => {
       setSlotsLoading(true)
+      setSlotNotice(null)
+      setSlots(null)
       try {
-        const res = await fetch(
+        const result = await fetchSlotResponse(
           `/api/slots?date=${dateKey}&locationId=${locationId}&therapistId=${therapistId}`
         )
-        if (!res.ok) {
-          throw new Error("Failed to load slots")
+        if (result.ok) {
+          setSlots(result.data)
+          const day = result.data.items.find((item) => item.date === dateKey)
+          if (day && (day.totalSlots ?? 0) > 0 && (day.slots?.length ?? 0) === 0) {
+            setSlotNotice("Slots penuh di tanggal ini.")
+          } else {
+            setSlotNotice(null)
+          }
+          return
         }
-        const payload = (await res.json()) as SlotResponse
-        setSlots(payload)
+        if (result.status === 409 || result.status === 422) {
+          setSlots({ timeZone: "Asia/Jakarta", items: [] })
+          setSlotNotice(result.message)
+          return
+        }
+        setSlots({ timeZone: "Asia/Jakarta", items: [] })
+        toast.error(result.message || "Failed to load slots")
       } catch (error) {
         console.error(error)
         toast.error("Failed to load slots")
@@ -272,24 +322,37 @@ export default function BookingForm() {
   React.useEffect(() => {
     if (!watchedLocationId || !watchedTherapistId) {
       setCalendarSlots(null)
+      setCalendarSlotNotice(null)
       return
     }
 
     const { start, end } = getMonthRange(calendarMonth)
 
     const loadCalendarSlots = async () => {
+      setCalendarSlotNotice(null)
+      setCalendarSlotsLoading(true)
+      setCalendarSlots(null)
       try {
-        const res = await fetch(
+        const result = await fetchSlotResponse(
           `/api/slots?rangeStart=${start.toISOString()}&rangeEnd=${end.toISOString()}&locationId=${watchedLocationId}&therapistId=${watchedTherapistId}`
         )
-        if (!res.ok) {
-          throw new Error("Failed to load slots")
+        if (result.ok) {
+          setCalendarSlots(result.data)
+          setCalendarSlotNotice(null)
+          return
         }
-        const payload = (await res.json()) as SlotResponse
-        setCalendarSlots(payload)
+        if (result.status === 409 || result.status === 422) {
+          setCalendarSlots({ timeZone: "Asia/Jakarta", items: [] })
+          setCalendarSlotNotice(result.message)
+          return
+        }
+        setCalendarSlots({ timeZone: "Asia/Jakarta", items: [] })
+        toast.error(result.message || "Failed to load slots")
       } catch (error) {
         console.error(error)
         toast.error("Failed to load slots")
+      } finally {
+        setCalendarSlotsLoading(false)
       }
     }
 
@@ -316,7 +379,26 @@ export default function BookingForm() {
       .map((day) => parseDateKey(day.date))
   }, [calendarSlots])
 
+  const selectedDateKey = selectedDate ? formatDateKey(selectedDate) : ""
+  const selectedCalendarDay = React.useMemo(() => {
+    if (!calendarSlots || !selectedDateKey) return null
+    return calendarSlots.items.find((item) => item.date === selectedDateKey) ?? null
+  }, [calendarSlots, selectedDateKey])
+  const selectedCalendarIsFull = Boolean(
+    selectedCalendarDay &&
+      (selectedCalendarDay.totalSlots ?? 0) > 0 &&
+      selectedCalendarDay.slots.length === 0
+  )
+
   const handleSubmit = form.handleSubmit(async (values) => {
+    if (!values.locationId) {
+      toast.error("Select a position first")
+      return
+    }
+    if (!values.therapistId) {
+      toast.error("Select a therapist first")
+      return
+    }
     try {
       const patientRes = await fetch("/api/patients", {
         method: "POST",
@@ -377,12 +459,27 @@ export default function BookingForm() {
     }
   })
 
+  const handleCancel = () => {
+    form.reset()
+    setSelectedDate(undefined)
+    setSlots(null)
+    setSlotNotice(null)
+    setCalendarSlots(null)
+    setCalendarSlotNotice(null)
+    setStep(1)
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-2xl shadow-sm">
+      <Card className="w-full max-w-3xl shadow-sm">
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <input type="hidden" {...form.register("locationId")} />
+          <input type="hidden" {...form.register("therapistId")} />
+          <input type="hidden" {...form.register("dateKey")} />
+          <input type="hidden" {...form.register("slotStartISO")} />
+          <input type="hidden" {...form.register("slotEndISO")} />
           <CardHeader>
-            <CardTitle>Booking Request</CardTitle>
+            <CardTitle>Create Booking</CardTitle>
             <CardDescription>
               Lengkapi data pasien, pilih lokasi & therapist, lalu tentukan jadwal.
             </CardDescription>
@@ -554,9 +651,14 @@ export default function BookingForm() {
                                 type="button"
                                 variant="outline"
                                 className="w-full justify-start text-left font-normal"
+                                disabled={calendarSlotsLoading}
                               >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {selectedDate ? formatDateLabel(selectedDate) : "Select date"}
+                                {calendarSlotsLoading
+                                  ? "Loading availability..."
+                                  : selectedDate
+                                    ? formatDateLabel(selectedDate)
+                                    : "Select date"}
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
@@ -591,11 +693,17 @@ export default function BookingForm() {
                             <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
                               Select a position and therapist first.
                             </div>
+                          ) : calendarSlotsLoading ? (
+                            <Skeleton className="h-10 w-full" />
                           ) : slotsLoading ? (
                             <Skeleton className="h-10 w-full" />
                           ) : slotOptions.length === 0 ? (
                             <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                              No slots available.
+                              {slotNotice ??
+                                calendarSlotNotice ??
+                                (selectedCalendarIsFull
+                                  ? "Slots penuh di tanggal ini."
+                                  : "No slots available.")}
                             </div>
                           ) : (
                             <Select
@@ -629,12 +737,20 @@ export default function BookingForm() {
             )}
           </CardContent>
 
-          <CardFooter className={`flex w-full ${step === 1 ? "justify-end" : "justify-between"}`}>
-            {step > 1 && (
-              <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
-                Back
-              </Button>
-            )}
+          <CardFooter className="flex w-full justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (step === 1) {
+                  handleCancel()
+                  return
+                }
+                setStep(step - 1)
+              }}
+            >
+              {step === 1 ? "Cancel" : "Back"}
+            </Button>
             {step < 3 && (
               <Button
                 type="button"
@@ -651,7 +767,7 @@ export default function BookingForm() {
             )}
             {step === 3 && (
               <Button type="submit" disabled={form.formState.isSubmitting || loading}>
-                {form.formState.isSubmitting ? "Submitting..." : "Confirm Booking"}
+                {form.formState.isSubmitting ? "Saving..." : "Save Booking"}
               </Button>
             )}
           </CardFooter>

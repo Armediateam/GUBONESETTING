@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { CalendarIcon, Filter, MoreVertical, Plus, Search } from "lucide-react"
+import { CalendarIcon, Filter, MoreVertical, Plus, Search, X } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -48,6 +48,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -63,6 +66,35 @@ type SlotDay = {
 type SlotResponse = {
   timeZone: string
   items: SlotDay[]
+}
+
+async function fetchSlotResponse(url: string) {
+  const res = await fetch(url)
+  const contentType = res.headers.get("content-type") ?? ""
+
+  const payload = contentType.includes("application/json")
+    ? await res.json().catch(() => null)
+    : await res.text().catch(() => null)
+
+  if (res.ok) {
+    return { ok: true as const, data: payload as SlotResponse }
+  }
+
+  const messageFromJson =
+    payload &&
+    typeof payload === "object" &&
+    "message" in payload &&
+    typeof (payload as { message?: unknown }).message === "string"
+      ? (payload as { message: string }).message
+      : null
+
+  const message =
+    messageFromJson ||
+    (typeof payload === "string" ? payload : null) ||
+    res.statusText ||
+    "Request failed"
+
+  return { ok: false as const, status: res.status, message: String(message) }
 }
 
 type ServiceItem = {
@@ -135,6 +167,28 @@ const getMonthRange = (value: Date) => {
   return { start, end }
 }
 
+const formatUtcDateOnly = (value: Date) => {
+  const year = value.getUTCFullYear()
+  const month = String(value.getUTCMonth() + 1).padStart(2, "0")
+  const day = String(value.getUTCDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+const addUtcDays = (value: Date, days: number) => {
+  const next = new Date(value)
+  next.setUTCDate(next.getUTCDate() + days)
+  return next
+}
+
+const dateRangeLabel: Record<string, string> = {
+  all: "All dates",
+  today: "Today",
+  thisWeek: "This week",
+  thisMonth: "This month",
+  last7: "Last 7 days",
+  last30: "Last 30 days",
+}
+
 const formatDateTime = (value: string, timeZone?: string) =>
   new Intl.DateTimeFormat("id-ID", {
     timeZone,
@@ -143,6 +197,14 @@ const formatDateTime = (value: string, timeZone?: string) =>
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+  }).format(new Date(value))
+
+const formatDate = (value: string, timeZone?: string) =>
+  new Intl.DateTimeFormat("id-ID", {
+    timeZone,
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   }).format(new Date(value))
 
 const formatTime = (value: string, timeZone?: string) =>
@@ -162,19 +224,23 @@ export function BookingDashboard() {
     { locationId: string; therapistId: string }[]
   >([])
   const [isLoading, setIsLoading] = React.useState(true)
-  const [filtersOpen, setFiltersOpen] = React.useState(false)
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [bookingStep, setBookingStep] = React.useState(1)
   const [slotLoading, setSlotLoading] = React.useState(false)
   const [slots, setSlots] = React.useState<SlotResponse | null>(null)
+  const [slotNotice, setSlotNotice] = React.useState<string | null>(null)
   const [calendarSlots, setCalendarSlots] = React.useState<SlotResponse | null>(null)
+  const [calendarSlotNotice, setCalendarSlotNotice] = React.useState<string | null>(null)
   const [rescheduleOpen, setRescheduleOpen] = React.useState(false)
   const [rescheduleBooking, setRescheduleBooking] = React.useState<BookingRecord | null>(null)
   const [rescheduleDate, setRescheduleDate] = React.useState<Date | undefined>()
   const [rescheduleMonth, setRescheduleMonth] = React.useState<Date>(new Date())
   const [rescheduleCalendarSlots, setRescheduleCalendarSlots] =
     React.useState<SlotResponse | null>(null)
+  const [rescheduleCalendarNotice, setRescheduleCalendarNotice] =
+    React.useState<string | null>(null)
   const [rescheduleSlots, setRescheduleSlots] = React.useState<SlotResponse | null>(null)
+  const [rescheduleSlotNotice, setRescheduleSlotNotice] = React.useState<string | null>(null)
   const [rescheduleSlotLoading, setRescheduleSlotLoading] = React.useState(false)
   const [rescheduleSlotStartISO, setRescheduleSlotStartISO] = React.useState("")
   const [rescheduleSlotEndISO, setRescheduleSlotEndISO] = React.useState("")
@@ -185,8 +251,56 @@ export function BookingDashboard() {
   const [statusFilter, setStatusFilter] = React.useState<string>("")
   const [patientFilter, setPatientFilter] = React.useState<string>("")
   const [locationFilter, setLocationFilter] = React.useState<string>("")
+  const [dateRangeFilter, setDateRangeFilter] = React.useState<string>("all")
   const [dateFrom, setDateFrom] = React.useState<string>("")
   const [dateTo, setDateTo] = React.useState<string>("")
+
+  const applyDateRangeFilter = React.useCallback((value: string) => {
+    setDateRangeFilter(value)
+    const today = new Date()
+
+    if (value === "all") {
+      setDateFrom("")
+      setDateTo("")
+      return
+    }
+    if (value === "today") {
+      const key = formatUtcDateOnly(today)
+      setDateFrom(key)
+      setDateTo(key)
+      return
+    }
+    if (value === "thisWeek") {
+      const day = today.getUTCDay() // 0=Sun
+      const diffToMonday = (day + 6) % 7
+      const start = addUtcDays(today, -diffToMonday)
+      const end = addUtcDays(start, 6)
+      setDateFrom(formatUtcDateOnly(start))
+      setDateTo(formatUtcDateOnly(end))
+      return
+    }
+    if (value === "thisMonth") {
+      const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1))
+      const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0))
+      setDateFrom(formatUtcDateOnly(start))
+      setDateTo(formatUtcDateOnly(end))
+      return
+    }
+    if (value === "last7") {
+      const start = addUtcDays(today, -6)
+      setDateFrom(formatUtcDateOnly(start))
+      setDateTo(formatUtcDateOnly(today))
+      return
+    }
+    if (value === "last30") {
+      const start = addUtcDays(today, -29)
+      setDateFrom(formatUtcDateOnly(start))
+      setDateTo(formatUtcDateOnly(today))
+      return
+    }
+  }, [])
+
+  const hasAnyFilter = Boolean(statusFilter || locationFilter || dateFrom || dateTo || patientFilter)
 
   const form = useForm({
     resolver: zodResolver(bookingFormSchema),
@@ -349,20 +463,29 @@ export function BookingDashboard() {
 
     if (!dateKey || !locationId || !therapistId) {
       setSlots(null)
+      setSlotNotice(null)
       return
     }
 
     const loadSlots = async () => {
       setSlotLoading(true)
+      setSlotNotice(null)
       try {
-        const res = await fetch(
+        const result = await fetchSlotResponse(
           `/api/slots?date=${dateKey}&locationId=${locationId}&therapistId=${therapistId}`
         )
-        if (!res.ok) {
-          throw new Error("Failed to load slots")
+        if (result.ok) {
+          setSlots(result.data)
+          setSlotNotice(null)
+          return
         }
-        const payload = (await res.json()) as SlotResponse
-        setSlots(payload)
+        if (result.status === 409 || result.status === 422) {
+          setSlots({ timeZone: "Asia/Jakarta", items: [] })
+          setSlotNotice(result.message)
+          return
+        }
+        setSlots({ timeZone: "Asia/Jakarta", items: [] })
+        toast.error(result.message || "Failed to load slots")
       } catch (error) {
         console.error(error)
         toast.error("Failed to load slots")
@@ -379,21 +502,30 @@ export function BookingDashboard() {
     const therapistId = form.getValues("therapistId")
     if (!locationId || !therapistId) {
       setCalendarSlots(null)
+      setCalendarSlotNotice(null)
       return
     }
 
     const { start, end } = getMonthRange(calendarMonth)
 
     const loadCalendarSlots = async () => {
+      setCalendarSlotNotice(null)
       try {
-        const res = await fetch(
+        const result = await fetchSlotResponse(
           `/api/slots?rangeStart=${start.toISOString()}&rangeEnd=${end.toISOString()}&locationId=${locationId}&therapistId=${therapistId}`
         )
-        if (!res.ok) {
-          throw new Error("Failed to load slots")
+        if (result.ok) {
+          setCalendarSlots(result.data)
+          setCalendarSlotNotice(null)
+          return
         }
-        const payload = (await res.json()) as SlotResponse
-        setCalendarSlots(payload)
+        if (result.status === 409 || result.status === 422) {
+          setCalendarSlots({ timeZone: "Asia/Jakarta", items: [] })
+          setCalendarSlotNotice(result.message)
+          return
+        }
+        setCalendarSlots({ timeZone: "Asia/Jakarta", items: [] })
+        toast.error(result.message || "Failed to load slots")
       } catch (error) {
         console.error(error)
         toast.error("Failed to load slots")
@@ -407,6 +539,7 @@ export function BookingDashboard() {
   React.useEffect(() => {
     if (!rescheduleBooking || !rescheduleDate) {
       setRescheduleSlots(null)
+      setRescheduleSlotNotice(null)
       setRescheduleSlotStartISO("")
       setRescheduleSlotEndISO("")
       return
@@ -414,15 +547,23 @@ export function BookingDashboard() {
     const dateKey = formatDateKey(rescheduleDate)
     const loadSlots = async () => {
       setRescheduleSlotLoading(true)
+      setRescheduleSlotNotice(null)
       try {
-        const res = await fetch(
+        const result = await fetchSlotResponse(
           `/api/slots?date=${dateKey}&locationId=${rescheduleBooking.locationId}&therapistId=${rescheduleBooking.therapistId}`
         )
-        if (!res.ok) {
-          throw new Error("Failed to load slots")
+        if (result.ok) {
+          setRescheduleSlots(result.data)
+          setRescheduleSlotNotice(null)
+          return
         }
-        const payload = (await res.json()) as SlotResponse
-        setRescheduleSlots(payload)
+        if (result.status === 409 || result.status === 422) {
+          setRescheduleSlots({ timeZone: "Asia/Jakarta", items: [] })
+          setRescheduleSlotNotice(result.message)
+          return
+        }
+        setRescheduleSlots({ timeZone: "Asia/Jakarta", items: [] })
+        toast.error(result.message || "Failed to load slots")
       } catch (error) {
         console.error(error)
         toast.error("Failed to load slots")
@@ -436,21 +577,30 @@ export function BookingDashboard() {
   React.useEffect(() => {
     if (!rescheduleBooking) {
       setRescheduleCalendarSlots(null)
+      setRescheduleCalendarNotice(null)
       return
     }
 
     const { start, end } = getMonthRange(rescheduleMonth)
 
     const loadRescheduleCalendarSlots = async () => {
+      setRescheduleCalendarNotice(null)
       try {
-        const res = await fetch(
+        const result = await fetchSlotResponse(
           `/api/slots?rangeStart=${start.toISOString()}&rangeEnd=${end.toISOString()}&locationId=${rescheduleBooking.locationId}&therapistId=${rescheduleBooking.therapistId}`
         )
-        if (!res.ok) {
-          throw new Error("Failed to load slots")
+        if (result.ok) {
+          setRescheduleCalendarSlots(result.data)
+          setRescheduleCalendarNotice(null)
+          return
         }
-        const payload = (await res.json()) as SlotResponse
-        setRescheduleCalendarSlots(payload)
+        if (result.status === 409 || result.status === 422) {
+          setRescheduleCalendarSlots({ timeZone: "Asia/Jakarta", items: [] })
+          setRescheduleCalendarNotice(result.message)
+          return
+        }
+        setRescheduleCalendarSlots({ timeZone: "Asia/Jakarta", items: [] })
+        toast.error(result.message || "Failed to load slots")
       } catch (error) {
         console.error(error)
         toast.error("Failed to load slots")
@@ -681,13 +831,8 @@ export function BookingDashboard() {
 
   const availableLocations = React.useMemo(() => {
     const activeLocations = locations.filter((location) => location.isActive !== false)
-    if (!watchedTherapistId) {
-      return activeLocations
-    }
-    return activeLocations.filter((location) =>
-      schedulePairSet.has(`${location.id}:${watchedTherapistId}`)
-    )
-  }, [locations, schedulePairSet, watchedTherapistId])
+    return activeLocations
+  }, [locations])
 
   const availableServices = React.useMemo(
     () => services.filter((service) => service.isActive !== false),
@@ -736,10 +881,86 @@ export function BookingDashboard() {
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Button variant="outline" onClick={() => setFiltersOpen((prev) => !prev)}>
-            <Filter className="mr-2 h-4 w-4" />
-            Filters
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Filter</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>Status</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="max-h-72 overflow-y-auto">
+                  <DropdownMenuRadioGroup
+                    value={statusFilter || "all"}
+                    onValueChange={(value) =>
+                      setStatusFilter(value === "all" ? "" : value)
+                    }
+                  >
+                    <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                    {bookingStatusSchema.options.map((status) => (
+                      <DropdownMenuRadioItem key={status} value={status}>
+                        {statusLabel[status]}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>Position</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="max-h-72 overflow-y-auto">
+                  <DropdownMenuRadioGroup
+                    value={locationFilter || "all"}
+                    onValueChange={(value) =>
+                      setLocationFilter(value === "all" ? "" : value)
+                    }
+                  >
+                    <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                    {availableLocations.map((location) => (
+                      <DropdownMenuRadioItem key={location.id} value={location.id}>
+                        {location.city ?? location.name ?? "Position"}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>Date</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuRadioGroup
+                    value={dateRangeFilter}
+                    onValueChange={applyDateRangeFilter}
+                  >
+                    <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="today">Today</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="thisWeek">This week</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="thisMonth">This month</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="last7">Last 7 days</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="last30">Last 30 days</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={!hasAnyFilter}
+                onClick={() => {
+                  setStatusFilter("")
+                  setLocationFilter("")
+                  setPatientFilter("")
+                  applyDateRangeFilter("all")
+                }}
+              >
+                Clear all
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Create Booking
@@ -759,83 +980,66 @@ export function BookingDashboard() {
         </div>
       </div>
 
-      {filtersOpen && (
-        <div className="grid gap-3 rounded-xl border bg-muted/40 p-4 md:grid-cols-6">
-          <div>
-            <FieldLabel>Status</FieldLabel>
-            <Select
-              value={statusFilter}
-              onValueChange={(value) => setStatusFilter(value === "all" ? "" : value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {bookingStatusSchema.options.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {statusLabel[status]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <FieldLabel>Patient</FieldLabel>
-            <Select
-              value={patientFilter}
-              onValueChange={(value) => setPatientFilter(value === "all" ? "" : value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All patients" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {patients.map((patient) => (
-                  <SelectItem key={patient.id} value={patient.id}>
-                    {patient.fullName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <FieldLabel>Position</FieldLabel>
-            <Select
-              value={locationFilter}
-              onValueChange={(value) => setLocationFilter(value === "all" ? "" : value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All positions" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {availableLocations.map((location) => (
-                  <SelectItem key={location.id} value={location.id}>
-                    {location.city ?? location.name ?? "Position"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <FieldLabel>Date From</FieldLabel>
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(event) => setDateFrom(event.target.value)}
-            />
-          </div>
-          <div>
-            <FieldLabel>Date To</FieldLabel>
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(event) => setDateTo(event.target.value)}
-            />
-          </div>
+      {hasAnyFilter ? (
+        <div className="flex flex-wrap items-center gap-2">
+
+            {statusFilter ? (
+              <div className="inline-flex items-center gap-1 rounded-full border bg-background px-2 py-1 text-xs">
+                <span>Status: {statusLabel[statusFilter]}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5"
+                  aria-label="Clear status filter"
+                  onClick={() => setStatusFilter("")}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ) : null}
+
+            {locationFilter ? (
+              <div className="inline-flex items-center gap-1 rounded-full border bg-background px-2 py-1 text-xs">
+                <span>
+                  Position:{" "}
+                  {availableLocations.find((loc) => loc.id === locationFilter)?.city ??
+                    availableLocations.find((loc) => loc.id === locationFilter)?.name ??
+                    "Position"}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5"
+                  aria-label="Clear position filter"
+                  onClick={() => setLocationFilter("")}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ) : null}
+
+            {dateRangeFilter !== "all" ? (
+              <div className="inline-flex items-center gap-1 rounded-full border bg-background px-2 py-1 text-xs">
+                <span>
+                  Date: {dateRangeLabel[dateRangeFilter] ?? "Custom"}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5"
+                  aria-label="Clear date filter"
+                  onClick={() => applyDateRangeFilter("all")}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ) : null}
+
         </div>
-      )}
+      ) : null}
 
       <div className="rounded-xl border">
         {isLoading ? (
@@ -855,7 +1059,8 @@ export function BookingDashboard() {
                 <TableHead>Patient</TableHead>
                 <TableHead>Complaint</TableHead>
                 <TableHead>Service</TableHead>
-                <TableHead>Date & Time</TableHead>
+                <TableHead>Date Booking</TableHead>
+                <TableHead>Hour Booking</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Payment</TableHead>
                 <TableHead>Therapist</TableHead>
@@ -872,7 +1077,10 @@ export function BookingDashboard() {
                   </TableCell>
                   <TableCell>{booking.complaint ?? "-"}</TableCell>
                   <TableCell>{booking.serviceName}</TableCell>
-                  <TableCell>{formatDateTime(booking.startISO)}</TableCell>
+                  <TableCell>{formatDate(booking.startISO)}</TableCell>
+                  <TableCell>
+                    {formatTime(booking.startISO)} - {formatTime(booking.endISO)}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={statusVariant[booking.status]}>
                       {statusLabel[booking.status]}
@@ -1154,7 +1362,7 @@ export function BookingDashboard() {
                           <Skeleton className="h-10 w-full" />
                         ) : slotOptions.length === 0 ? (
                           <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                            No slots available.
+                            {slotNotice ?? calendarSlotNotice ?? "No slots available."}
                           </div>
                         ) : (
                           <Select
@@ -1290,7 +1498,7 @@ export function BookingDashboard() {
                     item.date === formatDateKey(rescheduleDate)
                   )?.slots ?? []).length === 0 ? (
                   <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                    No slots available.
+                    {rescheduleSlotNotice ?? rescheduleCalendarNotice ?? "No slots available."}
                   </div>
                 ) : (
                   <Select

@@ -18,8 +18,10 @@ export async function GET(
       .map((booking) => ({
         id: booking.id,
         serviceName: booking.serviceName,
+        complaint: booking.complaint ?? "",
         startISO: booking.startISO,
         endISO: booking.endISO,
+        createdAt: booking.createdAt,
         status: booking.status,
         locationName: booking.locationName,
         therapistName: booking.therapistName,

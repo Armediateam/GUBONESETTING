@@ -187,7 +187,7 @@ export function generateAvailableSlots({
 
         const nextCursor = new Date(
           slotStart.getTime() +
-            (schedule.slotDurationMins + schedule.bufferMins) * 60 * 1000
+            schedule.slotDurationMins * 60 * 1000
         )
 
         if (slotStart >= windowStart && slotStart <= windowEnd) {

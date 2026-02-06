@@ -22,12 +22,16 @@ export function NavMain({
 }) {
   const pathname = usePathname()
 
-  const isActive = (url: string) => {
-    if (url === "/") {
-      return pathname === "/"
-    }
-    return pathname.startsWith(url)
+  const matchesPath = (url: string) => {
+    if (url === "/") return pathname === "/"
+    return pathname === url || pathname.startsWith(`${url}/`)
   }
+
+  const activeUrl =
+    items
+      .map((item) => item.url)
+      .filter(matchesPath)
+      .sort((a, b) => b.length - a.length)[0] ?? null
 
   return (
     <SidebarGroup>
@@ -37,7 +41,11 @@ export function NavMain({
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild tooltip={item.title} isActive={isActive(item.url)}>
+              <SidebarMenuButton
+                asChild
+                tooltip={item.title}
+                isActive={activeUrl === item.url}
+              >
                 <Link href={item.url}>
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>

@@ -3,6 +3,7 @@
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Plus, Trash2, TriangleAlert } from "lucide-react"
+import type { DateRange } from "react-day-picker"
 import {
   type Control,
   type FieldErrors,
@@ -21,6 +22,7 @@ import {
   SLOT_DURATIONS,
   scheduleSchema,
   type Schedule,
+  type TimeRange,
 } from "@/lib/schedule/schema"
 import { generateAvailableSlots } from "@/lib/schedule/slots"
 import { cn } from "@/lib/utils"
@@ -76,6 +78,48 @@ const getMonthRange = (value: Date) => {
   return { start, end }
 }
 
+const isTime = (value: string) => /^\d{2}:\d{2}$/.test(value)
+
+const validateTimeRanges = (ranges: TimeRange[]) => {
+  if (ranges.length === 0) {
+    return "Add at least one time range"
+  }
+
+  for (const range of ranges) {
+    if (!isTime(range.start) || !isTime(range.end)) {
+      return "Use HH:mm format"
+    }
+    if (range.start >= range.end) {
+      return "End time must be after start time"
+    }
+  }
+
+  const sorted = [...ranges].sort((a, b) => a.start.localeCompare(b.start))
+  for (let index = 1; index < sorted.length; index += 1) {
+    if (sorted[index].start < sorted[index - 1].end) {
+      return "Time ranges must not overlap"
+    }
+  }
+
+  return null
+}
+
+const enumerateDateKeys = (from: Date, to: Date) => {
+  const start = new Date(from.getFullYear(), from.getMonth(), from.getDate())
+  const end = new Date(to.getFullYear(), to.getMonth(), to.getDate())
+  if (start.getTime() > end.getTime()) {
+    return []
+  }
+
+  const keys: string[] = []
+  const cursor = new Date(start)
+  while (cursor.getTime() <= end.getTime()) {
+    keys.push(formatDateKey(cursor))
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return keys
+}
+
 const formatTimeLabel = (iso: string, timeZone: string) => {
   const date = new Date(iso)
   return new Intl.DateTimeFormat("id-ID", {
@@ -129,6 +173,12 @@ export function ScheduleMain() {
   const [lastSavedAt, setLastSavedAt] = React.useState<string | null>(null)
   const [savedSchedule, setSavedSchedule] = React.useState<Schedule | null>(null)
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>()
+  const [overrideSelectionMode, setOverrideSelectionMode] = React.useState<"single" | "range">(
+    "single"
+  )
+  const [selectedRange, setSelectedRange] = React.useState<DateRange | undefined>(undefined)
+  const [rangeClosed, setRangeClosed] = React.useState(false)
+  const [rangeRanges, setRangeRanges] = React.useState<TimeRange[]>([defaultRange])
   const [calendarMonth, setCalendarMonth] = React.useState<Date>(new Date())
   const [calendarSlots, setCalendarSlots] = React.useState<
     { date: string; slots: { startISO: string; endISO: string }[]; totalSlots?: number }[]
@@ -326,14 +376,17 @@ export function ScheduleMain() {
     }
 
     const start = new Date()
-    const rangeDays = previewSchedule.maxFutureDays ?? 30
-    const end = new Date(start.getTime() + rangeDays * 24 * 60 * 60 * 1000)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(start)
+    end.setDate(end.getDate() + 6)
+    end.setHours(23, 59, 59, 999)
 
-    return generateAvailableSlots({
+    const slots = generateAvailableSlots({
       schedule: previewSchedule,
       rangeStartISO: start.toISOString(),
       rangeEndISO: end.toISOString(),
     })
+    return slots.slice(0, 7)
   }, [previewSchedule])
 
   const selectedDateKey = selectedDate ? formatDateKey(selectedDate) : ""
@@ -351,6 +404,40 @@ export function ScheduleMain() {
     .filter((day) => (day.totalSlots ?? 0) > 0 && day.slots.length === 0)
     .map((day) => parseDateKey(day.date))
 
+  const SAVED_DATES_PAGE_SIZE = 8
+  const [savedDatesPage, setSavedDatesPage] = React.useState(1)
+
+  const savedOverrides = React.useMemo(() => {
+    return overridesArray.fields
+      .map((override, index) => ({ override, index }))
+      .sort((a, b) => b.override.date.localeCompare(a.override.date))
+  }, [overridesArray.fields])
+
+  const savedDatesTotalPages = Math.max(
+    1,
+    Math.ceil(savedOverrides.length / SAVED_DATES_PAGE_SIZE)
+  )
+  const savedDatesPageClamped = Math.min(Math.max(1, savedDatesPage), savedDatesTotalPages)
+
+  const savedOverridesPage = React.useMemo(() => {
+    const startIndex = (savedDatesPageClamped - 1) * SAVED_DATES_PAGE_SIZE
+    return savedOverrides.slice(startIndex, startIndex + SAVED_DATES_PAGE_SIZE)
+  }, [savedOverrides, savedDatesPageClamped])
+
+  React.useEffect(() => {
+    if (savedDatesPage !== savedDatesPageClamped) {
+      setSavedDatesPage(savedDatesPageClamped)
+    }
+  }, [savedDatesPage, savedDatesPageClamped])
+
+  React.useEffect(() => {
+    if (!selectedDateKey) return
+    const index = savedOverrides.findIndex((item) => item.override.date === selectedDateKey)
+    if (index === -1) return
+    const nextPage = Math.floor(index / SAVED_DATES_PAGE_SIZE) + 1
+    setSavedDatesPage((current) => (current === nextPage ? current : nextPage))
+  }, [savedOverrides, selectedDateKey])
+
   const addSelectedDate = () => {
     if (!selectedDateKey) return
     if (selectedOverrideIndex !== -1) return
@@ -359,6 +446,47 @@ export function ScheduleMain() {
       closed: false,
       ranges: [defaultRange],
     })
+  }
+
+  const rangeFromKey = selectedRange?.from ? formatDateKey(selectedRange.from) : ""
+  const rangeToKey = selectedRange?.to ? formatDateKey(selectedRange.to) : ""
+  const rangeKeys =
+    selectedRange?.from && selectedRange?.to
+      ? enumerateDateKeys(selectedRange.from, selectedRange.to)
+      : []
+
+  const rangeTemplateError = !rangeClosed ? validateTimeRanges(rangeRanges) : null
+
+  const applySelectedRange = () => {
+    if (!selectedRange?.from || !selectedRange?.to) return
+    if (!rangeClosed && rangeTemplateError) return
+
+    const keys = enumerateDateKeys(selectedRange.from, selectedRange.to)
+    if (keys.length === 0) return
+
+    const nextRanges = rangeClosed ? [] : rangeRanges
+
+    const existingIndex = new Map(overridesArray.fields.map((item, index) => [item.date, index]))
+    const toAppend = keys
+      .filter((key) => !existingIndex.has(key))
+      .map((key) => ({
+        date: key,
+        closed: rangeClosed,
+        ranges: nextRanges,
+      }))
+
+    for (const key of keys) {
+      const index = existingIndex.get(key)
+      if (index === undefined) continue
+      setValue(`overrides.${index}.closed`, rangeClosed, { shouldDirty: true })
+      setValue(`overrides.${index}.ranges`, nextRanges, { shouldDirty: true })
+    }
+
+    if (toAppend.length > 0) {
+      overridesArray.append(toAppend)
+    }
+
+    toast.success(`Applied to ${keys.length} date(s)`)
   }
 
   const removeOverride = (index: number) => {
@@ -506,69 +634,176 @@ export function ScheduleMain() {
                 </div>
               </div>
               <div className="space-y-4">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  onMonthChange={setCalendarMonth}
-                  modifiers={{
-                    hasOverride: overrideDates,
-                    available: availableCalendarDates,
-                    full: fullCalendarDates,
-                  }}
-                  modifiersClassNames={{
-                    hasOverride: "bg-primary/15 text-primary",
-                    available: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
-                    full: "bg-red-500/15 text-red-700 dark:text-red-300",
-                  }}
-                  className="rounded-lg border"
-                />
-                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                  Select a date to add or edit hours.
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Selected date</p>
-                  <div className="flex items-center justify-between rounded-lg border px-4 py-3">
-                    <div>
-                      <div className="text-sm font-semibold">
-                        {selectedDateKey || "No date selected"}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {selectedDateKey
-                          ? formatDateLabel(selectedDateKey, scheduleWatch?.timezone ?? "Asia/Jakarta")
-                          : "Pick a date on the calendar"}
-                      </div>
-                    </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/20 p-3">
+                  <div className="text-sm font-medium">Selection mode</div>
+                  <div className="flex items-center gap-2">
                     <Button
                       type="button"
                       size="sm"
-                      onClick={addSelectedDate}
-                      disabled={!selectedDateKey || selectedOverrideIndex !== -1}
+                      variant={overrideSelectionMode === "single" ? "default" : "outline"}
+                      onClick={() => {
+                        setOverrideSelectionMode("single")
+                        setSelectedRange(undefined)
+                      }}
                     >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Date
+                      Single
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={overrideSelectionMode === "range" ? "default" : "outline"}
+                      onClick={() => {
+                        setOverrideSelectionMode("range")
+                        setSelectedDate(undefined)
+                      }}
+                    >
+                      Range
                     </Button>
                   </div>
                 </div>
 
-                {selectedOverride ? (
+                {overrideSelectionMode === "single" ? (
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    onMonthChange={setCalendarMonth}
+                    modifiers={{
+                      hasOverride: overrideDates,
+                      available: availableCalendarDates,
+                      full: fullCalendarDates,
+                    }}
+                    modifiersClassNames={{
+                      hasOverride: "bg-primary/15 text-primary",
+                      available: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+                      full: "bg-red-500/15 text-red-700 dark:text-red-300",
+                    }}
+                    className="rounded-lg border"
+                  />
+                ) : (
+                  <Calendar
+                    mode="range"
+                    selected={selectedRange}
+                    onSelect={setSelectedRange}
+                    onMonthChange={setCalendarMonth}
+                    modifiers={{
+                      hasOverride: overrideDates,
+                      available: availableCalendarDates,
+                      full: fullCalendarDates,
+                    }}
+                    modifiersClassNames={{
+                      hasOverride: "bg-primary/15 text-primary",
+                      available: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+                      full: "bg-red-500/15 text-red-700 dark:text-red-300",
+                    }}
+                    className="rounded-lg border"
+                  />
+                )}
+                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  {overrideSelectionMode === "single"
+                    ? "Select a date to add or edit hours."
+                    : "Select a date range to apply hours to multiple dates."}
+                </div>
+              </div>
+              <div className="space-y-4">
+                {overrideSelectionMode === "single" ? (
+                  <>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Selected date</p>
+                      <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+                        <div>
+                          <div className="text-sm font-semibold">
+                            {selectedDateKey || "No date selected"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {selectedDateKey
+                              ? formatDateLabel(
+                                  selectedDateKey,
+                                  scheduleWatch?.timezone ?? "Asia/Jakarta"
+                                )
+                              : "Pick a date on the calendar"}
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={addSelectedDate}
+                          disabled={!selectedDateKey || selectedOverrideIndex !== -1}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Date
+                        </Button>
+                      </div>
+                    </div>
+
+                    {selectedOverride ? (
+                      <div className="space-y-4 rounded-lg border p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">Date settings</p>
+                            <p className="text-xs text-muted-foreground">
+                              {selectedOverride.date}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeOverride(selectedOverrideIndex)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+                          <div>
+                            <FieldTitle>Closed all day</FieldTitle>
+                            <FieldDescription>
+                              Disable all booking hours on this date.
+                            </FieldDescription>
+                          </div>
+                          <Switch
+                            checked={!!form.getValues(
+                              `overrides.${selectedOverrideIndex}.closed`
+                            )}
+                            onCheckedChange={updateOverrideClosed}
+                          />
+                        </div>
+
+                        {!form.getValues(`overrides.${selectedOverrideIndex}.closed`) && (
+                          <OverrideRanges
+                            control={control}
+                            register={register}
+                            errors={errors}
+                            index={selectedOverrideIndex}
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                        No hours set for this date yet.
+                      </div>
+                    )}
+                  </>
+                ) : (
                   <div className="space-y-4 rounded-lg border p-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-medium">Date settings</p>
+                        <p className="text-sm font-medium">Selected range</p>
                         <p className="text-xs text-muted-foreground">
-                          {selectedOverride.date}
+                          {rangeFromKey && rangeToKey
+                            ? `${rangeFromKey} → ${rangeToKey} (${rangeKeys.length} days)`
+                            : "Pick a range on the calendar"}
                         </p>
                       </div>
                       <Button
                         type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeOverride(selectedOverrideIndex)}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedRange(undefined)}
+                        disabled={!selectedRange?.from && !selectedRange?.to}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        Clear
                       </Button>
                     </div>
 
@@ -576,27 +811,92 @@ export function ScheduleMain() {
                       <div>
                         <FieldTitle>Closed all day</FieldTitle>
                         <FieldDescription>
-                          Disable all booking hours on this date.
+                          Disable all booking hours for every date in the range.
                         </FieldDescription>
                       </div>
-                      <Switch
-                        checked={!!form.getValues(`overrides.${selectedOverrideIndex}.closed`)}
-                        onCheckedChange={updateOverrideClosed}
-                      />
+                      <Switch checked={rangeClosed} onCheckedChange={setRangeClosed} />
                     </div>
 
-                    {!form.getValues(`overrides.${selectedOverrideIndex}.closed`) && (
-                      <OverrideRanges
-                        control={control}
-                        register={register}
-                        errors={errors}
-                        index={selectedOverrideIndex}
-                      />
+                    {!rangeClosed && (
+                      <div className="space-y-3">
+                        {rangeRanges.map((range, index) => (
+                          <div
+                            key={`${range.start}-${range.end}-${index}`}
+                            className="grid gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_1fr_auto]"
+                          >
+                            <div>
+                              <FieldLabel>Mulai</FieldLabel>
+                              <Input
+                                type="time"
+                                step={60}
+                                value={range.start}
+                                onChange={(event) => {
+                                  const next = [...rangeRanges]
+                                  next[index] = { ...next[index], start: event.target.value }
+                                  setRangeRanges(next)
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <FieldLabel>Selesai</FieldLabel>
+                              <Input
+                                type="time"
+                                step={60}
+                                value={range.end}
+                                onChange={(event) => {
+                                  const next = [...rangeRanges]
+                                  next[index] = { ...next[index], end: event.target.value }
+                                  setRangeRanges(next)
+                                }}
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  setRangeRanges((prev) => prev.filter((_, i) => i !== index))
+                                }
+                                disabled={rangeRanges.length <= 1}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setRangeRanges((prev) => [...prev, defaultRange])}
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Range
+                          </Button>
+                          {rangeTemplateError ? (
+                            <div className="text-sm text-destructive">{rangeTemplateError}</div>
+                          ) : null}
+                        </div>
+                      </div>
                     )}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                    No hours set for this date yet.
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="text-xs text-muted-foreground">
+                        Existing dates in this range will be updated.
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={applySelectedRange}
+                        disabled={
+                          !selectedRange?.from || !selectedRange?.to || !!rangeTemplateError
+                        }
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Apply to range
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -608,50 +908,88 @@ export function ScheduleMain() {
               <CardTitle>Saved dates</CardTitle>
               <CardDescription>Manage all date-specific hours.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {overridesArray.fields.length === 0 ? (
-                <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                  No dates configured yet.
-                </div>
-              ) : (
-                overridesArray.fields.map((override, index) => (
-                  <div
-                    key={override.id}
-                    className={cn(
-                      "flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between",
-                      override.date === selectedDateKey && "border-primary/60 bg-muted/40"
-                    )}
-                  >
-                    <div>
-                      <div className="text-sm font-medium">{override.date}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {override.closed ? "Closed" : `${override.ranges?.length || 0} ranges`}
+             <CardContent className="space-y-3">
+               {overridesArray.fields.length === 0 ? (
+                 <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                   No dates configured yet.
+                 </div>
+               ) : (
+                  <div className="space-y-3">
+                    {savedOverridesPage.map(({ override, index }) => (
+                      <div
+                        key={override.id}
+                        className={cn(
+                          "flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between",
+                          override.date === selectedDateKey && "border-primary/60 bg-muted/40"
+                        )}
+                      >
+                        <div>
+                          <div className="text-sm font-medium">{override.date}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {override.closed ? "Closed" : `${override.ranges?.length || 0} ranges`}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setOverrideSelectionMode("single")
+                              setSelectedRange(undefined)
+                              setSelectedDate(parseDateKey(override.date))
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeOverride(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedDate(parseDateKey(override.date))}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeOverride(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    ))}
+
+                    {savedOverrides.length > SAVED_DATES_PAGE_SIZE ? (
+                      <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="text-xs text-muted-foreground">
+                          Page {savedDatesPageClamped} of {savedDatesTotalPages}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSavedDatesPage((prev) => Math.max(1, prev - 1))}
+                            disabled={savedDatesPageClamped <= 1}
+                          >
+                            Previous
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setSavedDatesPage((prev) =>
+                                Math.min(savedDatesTotalPages, prev + 1)
+                              )
+                            }
+                            disabled={savedDatesPageClamped >= savedDatesTotalPages}
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                ))
-              )}
-              {errors.overrides &&
-                "message" in errors.overrides &&
-                errors.overrides.message && (
+                )}
+                {errors.overrides &&
+                  "message" in errors.overrides &&
+                  errors.overrides.message && (
                   <FieldError errors={[{ message: errors.overrides.message }]} />
                 )}
             </CardContent>

@@ -5,6 +5,15 @@ import { readSchedule, readScheduleConfig } from "@/lib/schedule/storage"
 import { generateAvailableSlots } from "@/lib/schedule/slots"
 import { ensureSeedData } from "@/lib/seed/ensure"
 
+const isValidTimeZone = (timeZone: string) => {
+  try {
+    Intl.DateTimeFormat("en-US", { timeZone }).format(new Date())
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function GET(request: NextRequest) {
   await ensureSeedData()
   const { searchParams } = new URL(request.url)
@@ -35,46 +44,67 @@ export async function GET(request: NextRequest) {
       { status: 409 }
     )
   }
-  const schedule = await readSchedule(locationId, therapistId)
-  const bookings = await readBookings()
 
-  const rangeStartISO = rangeStart
-    ? rangeStart
-    : new Date(`${date}T00:00:00.000Z`).toISOString()
-  const rangeEndISO = rangeEnd
-    ? rangeEnd
-    : new Date(`${date}T23:59:59.000Z`).toISOString()
-
-  const allSlots = generateAvailableSlots({
-    schedule,
-    rangeStartISO,
-    rangeEndISO,
-  })
-
-  const availableSlots = generateAvailableSlots({
-    schedule,
-    rangeStartISO,
-    rangeEndISO,
-    existingBookings: bookings
-      .filter(
-        (booking) =>
-          booking.locationId === locationId &&
-          booking.therapistId === therapistId &&
-          booking.status === "scheduled"
+  try {
+    const schedule = await readSchedule(locationId, therapistId)
+    if (!isValidTimeZone(schedule.timezone)) {
+      return NextResponse.json(
+        {
+          message:
+            "Invalid schedule timezone. Use a valid IANA timezone (e.g. Asia/Jakarta).",
+        },
+        { status: 422 }
       )
-      .map((booking) => ({
-        startISO: booking.startISO,
-        endISO: booking.endISO,
+    }
+
+    const bookings = await readBookings()
+
+    const rangeStartISO = rangeStart
+      ? rangeStart
+      : new Date(`${date}T00:00:00.000Z`).toISOString()
+    const rangeEndISO = rangeEnd
+      ? rangeEnd
+      : new Date(`${date}T23:59:59.000Z`).toISOString()
+
+    const allSlots = generateAvailableSlots({
+      schedule,
+      rangeStartISO,
+      rangeEndISO,
+    })
+
+    const availableSlots = generateAvailableSlots({
+      schedule,
+      rangeStartISO,
+      rangeEndISO,
+      existingBookings: bookings
+        .filter(
+          (booking) =>
+            booking.locationId === locationId &&
+            booking.therapistId === therapistId &&
+            booking.status === "scheduled"
+        )
+        .map((booking) => ({
+          startISO: booking.startISO,
+          endISO: booking.endISO,
+        })),
+    })
+
+    const totalSlotMap = new Map(
+      allSlots.map((day) => [day.date, day.slots.length])
+    )
+
+    return NextResponse.json({
+      timeZone: schedule.timezone,
+      items: availableSlots.map((day) => ({
+        ...day,
+        totalSlots: totalSlotMap.get(day.date) ?? 0,
       })),
-  })
-
-  const totalSlotMap = new Map(allSlots.map((day) => [day.date, day.slots.length]))
-
-  return NextResponse.json({
-    timeZone: schedule.timezone,
-    items: availableSlots.map((day) => ({
-      ...day,
-      totalSlots: totalSlotMap.get(day.date) ?? 0,
-    })),
-  })
+    })
+  } catch (error) {
+    console.error(error)
+    return NextResponse.json(
+      { message: "Failed to generate slots" },
+      { status: 500 }
+    )
+  }
 }

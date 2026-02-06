@@ -2,9 +2,9 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 
@@ -64,6 +64,13 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const statusLabel: Record<string, string> = {
   scheduled: "Scheduled",
@@ -90,10 +97,12 @@ type Summary = {
 type Appointment = {
   id: string
   serviceName: string
+  complaint?: string
   startISO?: string
   endISO?: string
   startAt?: string
   endAt?: string
+  createdAt?: string
   locationName?: string
   therapistName?: string
   status: "scheduled" | "completed" | "cancelled" | "no_show"
@@ -101,6 +110,7 @@ type Appointment = {
 
 export function PatientDetail() {
   const params = useParams()
+  const router = useRouter()
   const patientId = Array.isArray(params?.patientId)
     ? params.patientId[0]
     : (params?.patientId as string)
@@ -280,6 +290,23 @@ export function PatientDetail() {
     }
   }
 
+  const handleDeletePatient = async () => {
+    if (!patientId) return
+    try {
+      const res = await fetch(`/api/patients/${patientId}`, { method: "DELETE" })
+      const payload = await res.json().catch(() => null)
+      if (!res.ok) {
+        toast.error(payload?.message || "Gagal menghapus pasien")
+        return
+      }
+      toast.success("Patient deleted")
+      router.replace("/dashboard/patients")
+    } catch (error) {
+      console.error(error)
+      toast.error("Server error")
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -320,10 +347,46 @@ export function PatientDetail() {
             <CardTitle>{patient.fullName}</CardTitle>
             <CardDescription>{patient.phone}</CardDescription>
           </div>
-          <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit Profile
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="Patient actions">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setNoteDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Note
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem className="text-destructive">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Patient
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Hapus pasien?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Semua riwayat booking dan catatan pasien ini akan ikut terhapus.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeletePatient}>
+                      Hapus
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 text-sm">
@@ -357,10 +420,14 @@ export function PatientDetail() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <SummaryCard title="Total Appointments" value={summary.total} />
         <SummaryCard title="Completed" value={summary.completed} />
         <SummaryCard title="Cancelled/No Show" value={summary.cancelled} />
+        <SummaryCard
+          title="Last Visit"
+          value={summary.lastVisitAt ? formatDate(summary.lastVisitAt) : "-"}
+        />
         <SummaryCard
           title="Upcoming"
           value={summary.upcoming ? formatDate(summary.upcoming) : "-"}
@@ -389,7 +456,10 @@ export function PatientDetail() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Tanggal</TableHead>
+                        <TableHead>Date Booking</TableHead>
+                        <TableHead>Hour Booking</TableHead>
+                        <TableHead>Complaint</TableHead>
+                        <TableHead>Booked At</TableHead>
                         <TableHead>Service</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Location</TableHead>
@@ -397,21 +467,31 @@ export function PatientDetail() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {appointments.map((appointment) => (
-                        <TableRow key={appointment.id}>
-                          <TableCell>
-                            {formatDateTime(appointment.startISO ?? appointment.startAt ?? "")}
-                          </TableCell>
-                          <TableCell>{appointment.serviceName}</TableCell>
-                          <TableCell>
-                            <Badge variant={statusVariant[appointment.status]}>
-                              {statusLabel[appointment.status]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{appointment.locationName ?? "-"}</TableCell>
-                          <TableCell>{appointment.therapistName ?? "-"}</TableCell>
-                        </TableRow>
-                      ))}
+                      {appointments.map((appointment) => {
+                        const start = appointment.startISO ?? appointment.startAt ?? ""
+                        const end = appointment.endISO ?? appointment.endAt ?? ""
+                        return (
+                          <TableRow key={appointment.id}>
+                            <TableCell>{start ? formatDate(start) : "-"}</TableCell>
+                            <TableCell>
+                              {start ? formatTime(start) : "-"}
+                              {end ? ` - ${formatTime(end)}` : ""}
+                            </TableCell>
+                            <TableCell>{appointment.complaint || "-"}</TableCell>
+                            <TableCell>
+                              {appointment.createdAt ? formatDateTime(appointment.createdAt) : "-"}
+                            </TableCell>
+                            <TableCell>{appointment.serviceName}</TableCell>
+                            <TableCell>
+                              <Badge variant={statusVariant[appointment.status]}>
+                                {statusLabel[appointment.status]}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{appointment.locationName ?? "-"}</TableCell>
+                            <TableCell>{appointment.therapistName ?? "-"}</TableCell>
+                          </TableRow>
+                        )
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -422,15 +502,11 @@ export function PatientDetail() {
 
         <TabsContent value="notes" className="space-y-4">
           <Card>
-            <CardHeader className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <CardHeader>
               <div>
                 <CardTitle>Notes</CardTitle>
                 <CardDescription>Catatan klinis atau admin.</CardDescription>
               </div>
-              <Button onClick={() => setNoteDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Note
-              </Button>
             </CardHeader>
             <CardContent className="space-y-4">
               {notes.length === 0 ? (
@@ -664,6 +740,12 @@ const formatDate = (value: string) =>
     day: "2-digit",
     month: "short",
     year: "numeric",
+  }).format(new Date(value))
+
+const formatTime = (value: string) =>
+  new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(new Date(value))
 
 const formatDateTime = (value: string) =>

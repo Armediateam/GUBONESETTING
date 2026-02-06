@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { MoreVertical, Search, Trash2 } from "lucide-react"
+import { Eye, MoreVertical, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { type PatientRecord } from "@/lib/patients/schema"
@@ -172,6 +172,12 @@ export function PatientsList() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/dashboard/patients/${patient.id}`}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Info selengkapnya
+                              </Link>
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => handleDelete(patient.id)}
