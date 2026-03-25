@@ -6,18 +6,35 @@ import { readJson, writeJsonAtomic } from "@/lib/storage/json"
 const dataDir = path.join(process.cwd(), "data")
 const schedulesPath = path.join(dataDir, "schedules.json")
 
-export async function readSchedules(): Promise<ScheduleConfig[]> {
-  return readJson<ScheduleConfig[]>(schedulesPath, [])
+type StoredScheduleRecord = Partial<ScheduleConfig> & {
+  locationId?: string
+  therapistId?: string
+}
+
+export async function readSchedules(): Promise<StoredScheduleRecord[]> {
+  return readJson<StoredScheduleRecord[]>(schedulesPath, [])
 }
 
 export async function readScheduleConfig(
   locationId: string,
   therapistId: string
-): Promise<ScheduleConfig | null> {
+): Promise<StoredScheduleRecord | null> {
   const schedules = await readSchedules()
-  return (
+
+  const exactMatch =
     schedules.find(
       (item) => item.locationId === locationId && item.therapistId === therapistId
+    ) ?? null
+
+  if (exactMatch) {
+    return exactMatch
+  }
+
+  return (
+    schedules.find(
+      (item) =>
+        item.locationId === locationId &&
+        (item.therapistId === undefined || item.therapistId === "")
     ) ?? null
   )
 }

@@ -3,13 +3,69 @@ import path from "path"
 
 import { readJson, writeJsonAtomic } from "@/lib/storage/json"
 import { therapistSchema, therapistUpdateSchema } from "./schema"
-import type { TherapistInput, TherapistRecord, TherapistUpdateInput } from "./schema"
+import type {
+  TherapistInput,
+  TherapistRecord,
+  TherapistServiceRate,
+  TherapistUpdateInput,
+} from "./schema"
 
 const dataDir = path.join(process.cwd(), "data")
 const therapistsPath = path.join(dataDir, "therapists.json")
 
+const normalizeServiceRates = (serviceRates: unknown): TherapistServiceRate[] => {
+  if (!Array.isArray(serviceRates)) {
+    return []
+  }
+
+  const seen = new Set<string>()
+
+  return serviceRates.flatMap((item) => {
+    if (!item || typeof item !== "object") {
+      return []
+    }
+
+    const candidate = item as { serviceId?: unknown; price?: unknown }
+    const serviceId = typeof candidate.serviceId === "string" ? candidate.serviceId.trim() : ""
+    const price =
+      typeof candidate.price === "number"
+        ? candidate.price
+        : typeof candidate.price === "string" && candidate.price.trim()
+          ? Number(candidate.price)
+          : NaN
+
+    if (!serviceId || Number.isNaN(price) || price < 0 || seen.has(serviceId)) {
+      return []
+    }
+
+    seen.add(serviceId)
+    return [{ serviceId, price }]
+  })
+}
+
+const normalizeTherapistRecord = (
+  therapist: Partial<TherapistRecord> & { id?: string; name?: string }
+): TherapistRecord => {
+  const now = new Date().toISOString()
+
+  return {
+    id: therapist.id ?? crypto.randomUUID(),
+    name: therapist.name ?? "",
+    gender: therapist.gender === "Female" || therapist.gender === "Male" ? therapist.gender : undefined,
+    age: typeof therapist.age === "number" ? therapist.age : undefined,
+    serviceRates: normalizeServiceRates(therapist.serviceRates),
+    isActive: therapist.isActive ?? true,
+    createdAt: therapist.createdAt ?? now,
+    updatedAt: therapist.updatedAt ?? therapist.createdAt ?? now,
+  }
+}
+
 export const readTherapists = async (): Promise<TherapistRecord[]> => {
-  return readJson<TherapistRecord[]>(therapistsPath, [])
+  const therapists = await readJson<
+    Array<Partial<TherapistRecord> & { id?: string; name?: string }>
+  >(therapistsPath, [])
+
+  return therapists.map((therapist) => normalizeTherapistRecord(therapist))
 }
 
 export const writeTherapists = async (therapists: TherapistRecord[]) => {

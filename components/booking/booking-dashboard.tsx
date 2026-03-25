@@ -11,6 +11,7 @@ import { z } from "zod"
 import type { PatientRecord } from "@/lib/patients/schema"
 import type { BookingRecord } from "@/lib/bookings/schema"
 import { bookingStatusSchema, paymentStatusSchema } from "@/lib/bookings/schema"
+import { calculateBookingPayment } from "@/lib/payments/pricing"
 import type { TherapistRecord } from "@/lib/therapists/schema"
 import type { LocationRecord } from "@/lib/locations/schema"
 import type { ScheduleConfig } from "@/lib/schedule/schema"
@@ -100,7 +101,12 @@ async function fetchSlotResponse(url: string) {
 type ServiceItem = {
   id: string
   name: string
+  durationMins?: number
   isActive?: boolean
+}
+
+type TherapistServiceOption = ServiceItem & {
+  price: number
 }
 
 const bookingFormSchema = z.object({
@@ -113,11 +119,29 @@ const bookingFormSchema = z.object({
   complaint: z.string().optional().or(z.literal("")),
   locationId: z.string().min(1, "Position is required"),
   therapistId: z.string().min(1, "Therapist is required"),
-  serviceName: z.string().min(1, "Service name is required"),
+  serviceId: z.string().min(1, "Service is required"),
   dateKey: z.string().min(1, "Date is required"),
   slotStartISO: z.string().min(1, "Slot waktu wajib dipilih"),
   slotEndISO: z.string().min(1, "Slot waktu wajib dipilih"),
 })
+
+type BookingFormValues = z.infer<typeof bookingFormSchema>
+
+const bookingStepFields: Record<number, (keyof BookingFormValues)[]> = {
+  1: ["fullName", "phone", "email"],
+  2: ["locationId", "therapistId", "serviceId"],
+  3: ["dateKey", "slotStartISO", "slotEndISO"],
+  4: [],
+  5: [],
+}
+
+const getBookingStepForField = (fieldName?: keyof BookingFormValues) => {
+  if (!fieldName) return 1
+  if (bookingStepFields[1].includes(fieldName)) return 1
+  if (bookingStepFields[2].includes(fieldName)) return 2
+  if (bookingStepFields[3].includes(fieldName)) return 3
+  return 1
+}
 
 const statusLabel: Record<string, string> = {
   scheduled: "Scheduled",
@@ -147,6 +171,15 @@ const paymentVariant: Record<string, "default" | "secondary" | "outline" | "dest
   failed: "destructive",
   expired: "outline",
   refunded: "outline",
+}
+
+const paymentMethodLabel: Record<string, string> = {
+  cash: "Cash",
+  bank_transfer: "Transfer Bank",
+  qris: "QRIS",
+  other: "Lainnya",
+  midtrans: "Midtrans",
+  manual: "Cash",
 }
 
 const formatDateKey = (date: Date) => {
@@ -214,7 +247,18 @@ const formatTime = (value: string, timeZone?: string) =>
     minute: "2-digit",
   }).format(new Date(value))
 
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value)
+
 export function BookingDashboard() {
+  const totalBookingSteps = 5
+  const [paymentMethodDraft, setPaymentMethodDraft] = React.useState<
+    "cash" | "bank_transfer" | "qris" | "other"
+  >("cash")
   const [locations, setLocations] = React.useState<LocationRecord[]>([])
   const [patients, setPatients] = React.useState<PatientRecord[]>([])
   const [bookings, setBookings] = React.useState<BookingRecord[]>([])
@@ -302,7 +346,7 @@ export function BookingDashboard() {
 
   const hasAnyFilter = Boolean(statusFilter || locationFilter || dateFrom || dateTo || patientFilter)
 
-  const form = useForm({
+  const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingFormSchema),
     defaultValues: {
       fullName: "",
@@ -311,7 +355,7 @@ export function BookingDashboard() {
       complaint: "",
       locationId: "",
       therapistId: "",
-      serviceName: "",
+      serviceId: "",
       dateKey: "",
       slotStartISO: "",
       slotEndISO: "",
@@ -331,7 +375,7 @@ export function BookingDashboard() {
       console.error(error)
       toast.error("Failed to load positions")
     }
-  }, [form])
+  }, [])
 
   const fetchSchedules = React.useCallback(async () => {
     try {
@@ -380,17 +424,11 @@ export function BookingDashboard() {
       const data = await res.json()
       const items = data.items ?? []
       setServices(items)
-      if (!form.getValues("serviceName")) {
-        const firstActive = items.find((item: ServiceItem) => item.isActive !== false)
-        if (firstActive) {
-          form.setValue("serviceName", firstActive.name)
-        }
-      }
     } catch (error) {
       console.error(error)
       toast.error("Failed to load services")
     }
-  }, [form])
+  }, [])
 
   const fetchTherapists = React.useCallback(async () => {
     try {
@@ -449,9 +487,7 @@ export function BookingDashboard() {
 
   const watchedLocationId = form.watch("locationId")
   const watchedTherapistId = form.watch("therapistId")
-  const watchedFullName = form.watch("fullName")
-  const watchedPhone = form.watch("phone")
-  const watchedServiceName = form.watch("serviceName")
+  const watchedServiceId = form.watch("serviceId")
 
   React.useEffect(() => {
     const dateKey = selectedDate ? formatDateKey(selectedDate) : ""
@@ -644,6 +680,15 @@ export function BookingDashboard() {
         return
       }
 
+      const service = availableServices.find((item) => item.id === values.serviceId)
+      if (!service) {
+        toast.error("Service not found for selected therapist")
+        return
+      }
+      const paymentStatus = "paid" as const
+      const paymentProvider = "manual"
+      const breakdown = calculateBookingPayment(service.price)
+
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -654,11 +699,24 @@ export function BookingDashboard() {
           locationAddress: location.address,
           therapistId: values.therapistId,
           therapistName: therapists.find((item) => item.id === values.therapistId)?.name,
-          serviceName: values.serviceName,
+          serviceId: service.id,
+          serviceName: service.name,
+          servicePrice: service.price,
           complaint: values.complaint,
           startISO: values.slotStartISO,
           endISO: values.slotEndISO,
           status: "scheduled",
+          paymentStatus,
+          payment: {
+            provider: paymentProvider,
+            paymentType: paymentMethodDraft,
+            subtotalAmount: breakdown.subtotalAmount,
+            taxAmount: breakdown.taxAmount,
+            totalAmount: breakdown.totalAmount,
+            grossAmount: breakdown.totalAmount,
+            currency: "IDR",
+            statusMessage: `Paid via ${paymentMethodLabel[paymentMethodDraft]} from dashboard`,
+          },
         }),
       })
       if (!res.ok) {
@@ -667,18 +725,38 @@ export function BookingDashboard() {
         return
       }
       await res.json()
+
       await fetchPatients()
       await fetchBookings()
       toast.success("Booking created")
-      form.reset()
-      setSelectedDate(undefined)
-      setSlots(null)
-      setDialogOpen(false)
-      setBookingStep(1)
+      resetCreateBookingDialog()
     } catch (error) {
       console.error(error)
       toast.error("Server error")
     }
+  }, (errors) => {
+    const firstInvalidField = (
+      [
+        "fullName",
+        "phone",
+        "email",
+        "locationId",
+        "therapistId",
+        "serviceId",
+        "dateKey",
+        "slotStartISO",
+        "slotEndISO",
+      ] as const
+    ).find((field) => errors[field])
+
+    setBookingStep(getBookingStepForField(firstInvalidField))
+
+    if (firstInvalidField && bookingStepFields[3].includes(firstInvalidField)) {
+      toast.error("Pilih tanggal dan slot booking yang valid terlebih dulu.")
+      return
+    }
+
+    toast.error("Lengkapi field yang wajib diisi sebelum membuat booking.")
   })
 
   const handleDeleteBooking = async (bookingId: string) => {
@@ -821,23 +899,102 @@ export function BookingDashboard() {
 
   const availableTherapists = React.useMemo(() => {
     const activeTherapists = therapists.filter((therapist) => therapist.isActive)
-    if (!watchedLocationId) {
-      return activeTherapists
-    }
-    return activeTherapists.filter((therapist) =>
-      schedulePairSet.has(`${watchedLocationId}:${therapist.id}`)
-    )
-  }, [therapists, schedulePairSet, watchedLocationId])
+    return activeTherapists
+  }, [therapists])
 
   const availableLocations = React.useMemo(() => {
     const activeLocations = locations.filter((location) => location.isActive !== false)
     return activeLocations
   }, [locations])
 
-  const availableServices = React.useMemo(
-    () => services.filter((service) => service.isActive !== false),
-    [services]
+  const selectedPairHasSchedule = React.useMemo(() => {
+    if (!watchedLocationId || !watchedTherapistId) {
+      return false
+    }
+    return schedulePairSet.has(`${watchedLocationId}:${watchedTherapistId}`)
+  }, [schedulePairSet, watchedLocationId, watchedTherapistId])
+
+  const selectedTherapist = React.useMemo(
+    () => therapists.find((therapist) => therapist.id === watchedTherapistId) ?? null,
+    [therapists, watchedTherapistId]
   )
+
+  const serviceLookup = React.useMemo(() => {
+    return new Map(services.map((service) => [service.id, service]))
+  }, [services])
+
+  const availableServices = React.useMemo<TherapistServiceOption[]>(() => {
+    if (!selectedTherapist) return []
+
+    return (selectedTherapist.serviceRates ?? []).flatMap((rate) => {
+      const service = serviceLookup.get(rate.serviceId)
+      if (!service || service.isActive === false) {
+        return []
+      }
+
+      return [{ ...service, price: rate.price }]
+    })
+  }, [selectedTherapist, serviceLookup])
+
+  const selectedService = React.useMemo(
+    () => availableServices.find((service) => service.id === watchedServiceId) ?? null,
+    [availableServices, watchedServiceId]
+  )
+  const paymentBreakdown = React.useMemo(
+    () => calculateBookingPayment(selectedService?.price ?? 0),
+    [selectedService?.price]
+  )
+
+  const resetCreateBookingDialog = React.useCallback(() => {
+    form.reset()
+    setSelectedDate(undefined)
+    setSlots(null)
+    setSlotNotice(null)
+    setCalendarSlots(null)
+    setCalendarSlotNotice(null)
+    setPaymentMethodDraft("cash")
+    setDialogOpen(false)
+    setBookingStep(1)
+  }, [form])
+
+  const handleBookingFormKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLFormElement>) => {
+      if (event.key !== "Enter" || bookingStep >= totalBookingSteps) {
+        return
+      }
+
+      const target = event.target as HTMLElement
+      if (target.tagName === "TEXTAREA") {
+        return
+      }
+
+      event.preventDefault()
+    },
+    [bookingStep, totalBookingSteps]
+  )
+
+  const handleNextBookingStep = React.useCallback(async () => {
+    const fields = bookingStepFields[bookingStep] ?? []
+
+    if (fields.length > 0) {
+      const isValid = await form.trigger(fields, { shouldFocus: true })
+      if (!isValid) {
+        if (bookingStep === 3) {
+          toast.error("Pilih tanggal dan slot booking yang valid terlebih dulu.")
+        } else {
+          toast.error("Lengkapi field yang wajib diisi sebelum lanjut ke langkah berikutnya.")
+        }
+        return
+      }
+    }
+
+    if (bookingStep === 3 && !form.getValues("slotEndISO")) {
+      toast.error("Pilih slot booking yang valid terlebih dulu.")
+      return
+    }
+
+    setBookingStep((prev) => Math.min(totalBookingSteps, prev + 1))
+  }, [bookingStep, form, totalBookingSteps])
 
   React.useEffect(() => {
     const current = form.getValues("locationId")
@@ -857,6 +1014,15 @@ export function BookingDashboard() {
     }
   }, [form, availableTherapists])
 
+  React.useEffect(() => {
+    const current = form.getValues("serviceId")
+    const stillAvailable = availableServices.some((service) => service.id === current)
+    if (!current || !stillAvailable) {
+      const firstAvailable = availableServices[0]
+      form.setValue("serviceId", firstAvailable?.id ?? "")
+    }
+  }, [form, availableServices])
+
   if (locations.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
@@ -865,7 +1031,7 @@ export function BookingDashboard() {
           Add a position before creating bookings.
         </p>
         <Button asChild>
-          <Link href="/dashboard/locations">Manage Positions</Link>
+          <Link href="/locations">Manage Positions</Link>
         </Button>
       </div>
     )
@@ -1087,9 +1253,19 @@ export function BookingDashboard() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={paymentVariant[booking.paymentStatus ?? "pending"]}>
-                      {paymentLabel[booking.paymentStatus ?? "pending"]}
-                    </Badge>
+                    <div className="flex flex-col gap-1">
+                      <Badge variant={paymentVariant[booking.paymentStatus ?? "pending"]}>
+                        {paymentLabel[booking.paymentStatus ?? "pending"]}
+                      </Badge>
+                      <div className="text-muted-foreground text-xs">
+                        {paymentMethodLabel[
+                          booking.payment?.paymentType ?? booking.payment?.provider ?? ""
+                        ] ?? "Not set"}
+                        {typeof booking.payment?.grossAmount === "number"
+                          ? ` - ${formatCurrency(booking.payment.grossAmount)}`
+                          : ""}
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell>
                     {therapistLookup.get(booking.therapistId) ?? booking.therapistName ?? "-"}
@@ -1143,20 +1319,21 @@ export function BookingDashboard() {
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
-          setDialogOpen(open)
-          if (!open) {
-            setBookingStep(1)
+          if (open) {
+            setDialogOpen(true)
+            return
           }
+          resetCreateBookingDialog()
         }}
       >
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Create Booking</DialogTitle>
             <DialogDescription>
-              Lengkapi data pasien, pilih lokasi & therapist, lalu tentukan jadwal.
+              Lengkapi data pasien, pilih layanan, tentukan jadwal, atur pembayaran, lalu review sebelum booking disimpan.
             </DialogDescription>
             <div className="mt-3 flex gap-2">
-              {[1, 2, 3].map((index) => (
+              {Array.from({ length: totalBookingSteps }, (_, index) => index + 1).map((index) => (
                 <div
                   key={index}
                   className={`h-1 flex-1 rounded-full ${
@@ -1166,7 +1343,7 @@ export function BookingDashboard() {
               ))}
             </div>
           </DialogHeader>
-          <form onSubmit={handleCreateBooking} className="space-y-6">
+          <form onSubmit={handleCreateBooking} onKeyDown={handleBookingFormKeyDown} className="space-y-6">
             <input type="hidden" {...form.register("locationId")} />
             <input type="hidden" {...form.register("therapistId")} />
             <input type="hidden" {...form.register("dateKey")} />
@@ -1252,55 +1429,74 @@ export function BookingDashboard() {
                     <Field>
                       <FieldLabel>Therapist</FieldLabel>
                       <FieldContent>
-                      {availableTherapists.length === 0 ? (
-                        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                          No therapist available for this position.
-                        </div>
-                      ) : (
-                        <Select
-                          value={form.watch("therapistId")}
-                          onValueChange={(value) => form.setValue("therapistId", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a therapist" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableTherapists.map((therapist) => (
-                              <SelectItem key={therapist.id} value={therapist.id}>
-                                {therapist.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {availableTherapists.length === 0 ? (
+                          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                            No active therapist available.
+                          </div>
+                        ) : (
+                          <Select
+                            value={form.watch("therapistId")}
+                            onValueChange={(value) => form.setValue("therapistId", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a therapist" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableTherapists.map((therapist) => (
+                                <SelectItem key={therapist.id} value={therapist.id}>
+                                  {therapist.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         )}
+                        {watchedLocationId && watchedTherapistId && !selectedPairHasSchedule ? (
+                          <p className="text-xs text-amber-600">
+                            Schedule for this therapist at the selected position is not set yet.
+                            You can still choose a service, but available slots will appear after
+                            the schedule is configured in the dashboard.
+                          </p>
+                        ) : null}
                         <FieldError errors={[form.formState.errors.therapistId]} />
                       </FieldContent>
                     </Field>
                     <Field>
-                      <FieldLabel>Service Name</FieldLabel>
+                      <FieldLabel>Service</FieldLabel>
                       <FieldContent>
-                        {availableServices.length === 0 ? (
+                        {!watchedTherapistId ? (
                           <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                            Add a service first.
+                            Select a therapist first.
+                          </div>
+                        ) : availableServices.length === 0 ? (
+                          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                            No services configured for this therapist.
                           </div>
                         ) : (
                           <Select
-                            value={form.watch("serviceName")}
-                            onValueChange={(value) => form.setValue("serviceName", value)}
+                            value={form.watch("serviceId")}
+                            onValueChange={(value) => form.setValue("serviceId", value)}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select a service" />
                             </SelectTrigger>
                             <SelectContent>
                               {availableServices.map((service) => (
-                                <SelectItem key={service.id} value={service.name}>
-                                  {service.name}
+                                <SelectItem key={service.id} value={service.id}>
+                                  {service.name} - {formatCurrency(service.price)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         )}
-                        <FieldError errors={[form.formState.errors.serviceName]} />
+                        {selectedService && (
+                          <p className="text-muted-foreground text-xs">
+                            Price {formatCurrency(selectedService.price)}
+                            {selectedService.durationMins
+                              ? ` - ${selectedService.durationMins} mins`
+                              : ""}
+                          </p>
+                        )}
+                        <FieldError errors={[form.formState.errors.serviceId]} />
                       </FieldContent>
                     </Field>
                   </FieldGroup>
@@ -1386,10 +1582,146 @@ export function BookingDashboard() {
                             </SelectContent>
                           </Select>
                         )}
-                        <FieldError errors={[form.formState.errors.slotStartISO]} />
+                        <FieldError
+                          errors={[
+                            form.formState.errors.slotStartISO,
+                            form.formState.errors.slotEndISO,
+                          ]}
+                        />
                       </FieldContent>
                     </Field>
                   </FieldGroup>
+                </div>
+              )}
+
+              {bookingStep === 4 && (
+                <div className="rounded-xl border bg-muted/30 p-4">
+                  <div className="mb-3 text-sm font-medium">Payment</div>
+                  <div className="space-y-4">
+                    <Field>
+                      <FieldLabel>Payment Method</FieldLabel>
+                      <FieldContent>
+                        <Select
+                          value={paymentMethodDraft}
+                          onValueChange={(
+                            value: "cash" | "bank_transfer" | "qris" | "other"
+                          ) => setPaymentMethodDraft(value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select payment method" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cash">Cash</SelectItem>
+                            <SelectItem value="bank_transfer">Transfer Bank</SelectItem>
+                            <SelectItem value="qris">QRIS</SelectItem>
+                            <SelectItem value="other">Lainnya</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FieldContent>
+                    </Field>
+
+                    <div className="rounded-lg border bg-background p-4">
+                      <div className="mb-3 text-sm font-medium">Payment summary</div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">Service price</span>
+                          <span>{formatCurrency(paymentBreakdown.subtotalAmount)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">
+                            PPN {paymentBreakdown.taxPercent}%
+                          </span>
+                          <span>{formatCurrency(paymentBreakdown.taxAmount)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 border-t pt-2 text-base font-semibold">
+                          <span>Total</span>
+                          <span>{formatCurrency(paymentBreakdown.totalAmount)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                      Booking yang dibuat dari dashboard dianggap sudah dibayar.
+                      Pilih saja metode pembayaran yang dipakai pasien, misalnya cash, transfer bank, atau QRIS.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {bookingStep === 5 && (
+                <div className="rounded-xl border bg-muted/30 p-4">
+                  <div className="mb-3 text-sm font-medium">Review</div>
+                  <div className="space-y-4">
+                    <div className="rounded-lg border bg-background p-4">
+                      <div className="mb-3 text-sm font-medium">Booking details</div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">Patient</span>
+                          <span>{form.getValues("fullName") || "-"}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">Phone</span>
+                          <span>{form.getValues("phone") || "-"}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">Service</span>
+                          <span>{selectedService?.name ?? "-"}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">Therapist</span>
+                          <span>{selectedTherapist?.name ?? "-"}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">Position</span>
+                          <span>
+                            {availableLocations.find((item) => item.id === watchedLocationId)?.city ??
+                              availableLocations.find((item) => item.id === watchedLocationId)?.name ??
+                              "-"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">Schedule</span>
+                          <span>
+                            {selectedDate
+                              ? `${formatDateKey(selectedDate)} ${form.getValues("slotStartISO") ? `, ${formatTime(form.getValues("slotStartISO"), slots?.timeZone)}` : ""}`
+                              : "-"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border bg-background p-4">
+                      <div className="mb-3 text-sm font-medium">Payment details</div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">Method</span>
+                          <span>{paymentMethodLabel[paymentMethodDraft]}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">Status</span>
+                          <span>Sudah bayar</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">Service price</span>
+                          <span>{formatCurrency(paymentBreakdown.subtotalAmount)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">
+                            PPN {paymentBreakdown.taxPercent}%
+                          </span>
+                          <span>{formatCurrency(paymentBreakdown.taxAmount)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 border-t pt-2 text-base font-semibold">
+                          <span>Total</span>
+                          <span>{formatCurrency(paymentBreakdown.totalAmount)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                      Klik <span className="font-medium text-foreground">Create Booking</span> hanya jika semua data sudah benar.
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1399,8 +1731,7 @@ export function BookingDashboard() {
                 variant="outline"
                 onClick={() => {
                   if (bookingStep === 1) {
-                    setDialogOpen(false)
-                    setBookingStep(1)
+                    resetCreateBookingDialog()
                   } else {
                     setBookingStep((prev) => Math.max(1, prev - 1))
                   }
@@ -1408,24 +1739,16 @@ export function BookingDashboard() {
               >
                 {bookingStep === 1 ? "Cancel" : "Back"}
               </Button>
-              {bookingStep < 3 ? (
+              {bookingStep < totalBookingSteps ? (
                 <Button
                   type="button"
-                  onClick={() => setBookingStep((prev) => Math.min(3, prev + 1))}
-                  disabled={
-                    (bookingStep === 1 &&
-                      (!watchedFullName?.trim() || !watchedPhone?.trim())) ||
-                    (bookingStep === 2 &&
-                      (!watchedLocationId ||
-                        !watchedTherapistId ||
-                        !watchedServiceName?.trim()))
-                  }
+                  onClick={handleNextBookingStep}
                 >
                   Next
                 </Button>
               ) : (
                 <Button type="submit" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? "Saving..." : "Save Booking"}
+                  {form.formState.isSubmitting ? "Saving..." : "Create Booking"}
                 </Button>
               )}
             </DialogFooter>

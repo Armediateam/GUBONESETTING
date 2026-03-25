@@ -18,16 +18,10 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 
 export function SiteHeader() {
   const pathname = usePathname()
-  const [time, setTime] = useState<string>(() =>
-    new Date().toLocaleTimeString("id-ID", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    })
-  )
+  const [time, setTime] = useState<string | null>(null)
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const updateTime = () => {
       setTime(
         new Date().toLocaleTimeString("id-ID", {
           hour: "2-digit",
@@ -35,6 +29,12 @@ export function SiteHeader() {
           second: "2-digit",
         })
       )
+    }
+
+    updateTime()
+
+    const interval = setInterval(() => {
+      updateTime()
     }, 1000)
 
     return () => clearInterval(interval)
@@ -56,7 +56,7 @@ export function SiteHeader() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link href="/dashboard">Dashboard</Link>
+                <Link href="/">Dashboard</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
 
@@ -88,7 +88,9 @@ export function SiteHeader() {
         <div className="ml-auto flex items-center gap-3">
           <div className="flex items-center gap-2 px-2 py-1.5 text-sm font-medium">
             <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="tabular-nums">{time}</span>
+            <span className="min-w-[4.75rem] tabular-nums" suppressHydrationWarning>
+              {time ?? "--:--:--"}
+            </span>
           </div>
         </div>
       </div>

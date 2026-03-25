@@ -3,11 +3,13 @@
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { CalendarIcon } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
 
 import type { LocationRecord } from "@/lib/locations/schema"
+import { calculateBookingPayment } from "@/lib/payments/pricing"
 import type { TherapistRecord } from "@/lib/therapists/schema"
 import type { ScheduleConfig } from "@/lib/schedule/schema"
 import { Button } from "@/components/ui/button"
@@ -79,6 +81,30 @@ type ServiceItem = {
   isActive?: boolean
 }
 
+type TherapistServiceOption = ServiceItem & {
+  price: number
+}
+
+type MidtransSnapResult = {
+  order_id?: string
+}
+
+declare global {
+  interface Window {
+    snap?: {
+      pay: (
+        token: string,
+        options?: {
+          onSuccess?: (result: MidtransSnapResult) => void
+          onPending?: (result: MidtransSnapResult) => void
+          onError?: (result: MidtransSnapResult) => void
+          onClose?: () => void
+        }
+      ) => void
+    }
+  }
+}
+
 const bookingFormSchema = z.object({
   fullName: z.string().min(1, "Nama wajib diisi"),
   phone: z
@@ -89,7 +115,7 @@ const bookingFormSchema = z.object({
   complaint: z.string().optional().or(z.literal("")),
   locationId: z.string().min(1, "Position is required"),
   therapistId: z.string().min(1, "Therapist is required"),
-  serviceName: z.string().min(1, "Service name is required"),
+  serviceId: z.string().min(1, "Service is required"),
   dateKey: z.string().min(1, "Date is required"),
   slotStartISO: z.string().min(1, "Slot waktu wajib dipilih"),
   slotEndISO: z.string().min(1, "Slot waktu wajib dipilih"),
@@ -127,11 +153,23 @@ const formatTime = (value: string, timeZone?: string) =>
     minute: "2-digit",
   }).format(new Date(value))
 
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value)
+
 export default function BookingForm() {
+  const router = useRouter()
   const [step, setStep] = React.useState(1)
   const [loading, setLoading] = React.useState(true)
   const [slotsLoading, setSlotsLoading] = React.useState(false)
   const [calendarSlotsLoading, setCalendarSlotsLoading] = React.useState(false)
+  const [midtransReady, setMidtransReady] = React.useState(false)
+  const [isProcessingPayment, setIsProcessingPayment] = React.useState(false)
+  const [createdBookingId, setCreatedBookingId] = React.useState<string | null>(null)
+  const [activePaymentToken, setActivePaymentToken] = React.useState<string | null>(null)
 
   const [locations, setLocations] = React.useState<LocationRecord[]>([])
   const [therapists, setTherapists] = React.useState<TherapistRecord[]>([])
@@ -145,6 +183,12 @@ export default function BookingForm() {
   const [calendarSlotNotice, setCalendarSlotNotice] = React.useState<string | null>(null)
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>()
   const [calendarMonth, setCalendarMonth] = React.useState<Date>(new Date())
+  const midtransClientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY ?? ""
+  const midtransEnabled = Boolean(midtransClientKey)
+  const midtransScriptUrl =
+    process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === "true"
+      ? "https://app.midtrans.com/snap/snap.js"
+      : "https://app.sandbox.midtrans.com/snap/snap.js"
 
   const form = useForm({
     resolver: zodResolver(bookingFormSchema),
@@ -155,7 +199,7 @@ export default function BookingForm() {
       complaint: "",
       locationId: "",
       therapistId: "",
-      serviceName: "",
+      serviceId: "",
       dateKey: "",
       slotStartISO: "",
       slotEndISO: "",
@@ -201,12 +245,6 @@ export default function BookingForm() {
             .map((item) => ({ locationId: item.locationId, therapistId: item.therapistId }))
         )
 
-        if (!form.getValues("serviceName")) {
-          const firstActive = activeServices[0]
-          if (firstActive) {
-            form.setValue("serviceName", firstActive.name)
-          }
-        }
       } catch (error) {
         console.error(error)
         toast.error("Failed to load booking data")
@@ -218,11 +256,57 @@ export default function BookingForm() {
     loadData()
   }, [form])
 
+  React.useEffect(() => {
+    if (!midtransEnabled) {
+      setMidtransReady(false)
+      return
+    }
+
+    if (window.snap) {
+      setMidtransReady(true)
+      return
+    }
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[data-midtrans-snap="true"]'
+    )
+
+    const handleLoad = () => setMidtransReady(true)
+    const handleError = () => {
+      setMidtransReady(false)
+      toast.error("Failed to load Midtrans payment dialog")
+    }
+
+    if (existingScript) {
+      existingScript.addEventListener("load", handleLoad)
+      existingScript.addEventListener("error", handleError)
+
+      return () => {
+        existingScript.removeEventListener("load", handleLoad)
+        existingScript.removeEventListener("error", handleError)
+      }
+    }
+
+    const script = document.createElement("script")
+    script.src = midtransScriptUrl
+    script.setAttribute("data-client-key", midtransClientKey)
+    script.setAttribute("data-midtrans-snap", "true")
+    script.async = true
+    script.addEventListener("load", handleLoad)
+    script.addEventListener("error", handleError)
+    document.body.appendChild(script)
+
+    return () => {
+      script.removeEventListener("load", handleLoad)
+      script.removeEventListener("error", handleError)
+    }
+  }, [midtransClientKey, midtransEnabled, midtransScriptUrl])
+
   const watchedLocationId = form.watch("locationId")
   const watchedTherapistId = form.watch("therapistId")
   const watchedFullName = form.watch("fullName")
   const watchedPhone = form.watch("phone")
-  const watchedServiceName = form.watch("serviceName")
+  const watchedServiceId = form.watch("serviceId")
 
   const schedulePairSet = React.useMemo(
     () => new Set(schedulePairs.map((item) => `${item.locationId}:${item.therapistId}`)),
@@ -230,19 +314,49 @@ export default function BookingForm() {
   )
 
   const availableTherapists = React.useMemo(() => {
-    if (!watchedLocationId) return therapists
-    return therapists.filter((therapist) =>
-      schedulePairSet.has(`${watchedLocationId}:${therapist.id}`)
-    )
-  }, [therapists, schedulePairSet, watchedLocationId])
+    return therapists
+  }, [therapists])
 
   const availableLocations = React.useMemo(() => {
     return locations
   }, [locations])
 
-  const availableServices = React.useMemo(
-    () => services.filter((service) => service.isActive !== false),
-    [services]
+  const selectedPairHasSchedule = React.useMemo(() => {
+    if (!watchedLocationId || !watchedTherapistId) {
+      return false
+    }
+    return schedulePairSet.has(`${watchedLocationId}:${watchedTherapistId}`)
+  }, [schedulePairSet, watchedLocationId, watchedTherapistId])
+
+  const selectedTherapist = React.useMemo(
+    () => therapists.find((therapist) => therapist.id === watchedTherapistId) ?? null,
+    [therapists, watchedTherapistId]
+  )
+
+  const serviceLookup = React.useMemo(() => {
+    return new Map(services.map((service) => [service.id, service]))
+  }, [services])
+
+  const availableServices = React.useMemo<TherapistServiceOption[]>(() => {
+    if (!selectedTherapist) return []
+
+    return (selectedTherapist.serviceRates ?? []).flatMap((rate) => {
+      const service = serviceLookup.get(rate.serviceId)
+      if (!service || service.isActive === false) {
+        return []
+      }
+
+      return [{ ...service, price: rate.price }]
+    })
+  }, [selectedTherapist, serviceLookup])
+
+  const selectedService = React.useMemo(
+    () => availableServices.find((service) => service.id === watchedServiceId) ?? null,
+    [availableServices, watchedServiceId]
+  )
+  const paymentBreakdown = React.useMemo(
+    () => calculateBookingPayment(selectedService?.price ?? 0),
+    [selectedService?.price]
   )
 
   React.useEffect(() => {
@@ -268,6 +382,15 @@ export default function BookingForm() {
       form.setValue("therapistId", firstAvailable?.id ?? "")
     }
   }, [form, availableTherapists])
+
+  React.useEffect(() => {
+    const current = form.getValues("serviceId")
+    const stillAvailable = availableServices.some((service) => service.id === current)
+    if (!current || !stillAvailable) {
+      const firstAvailable = availableServices[0]
+      form.setValue("serviceId", firstAvailable?.id ?? "")
+    }
+  }, [form, availableServices])
 
   React.useEffect(() => {
     const dateKey = selectedDate ? formatDateKey(selectedDate) : ""
@@ -390,6 +513,51 @@ export default function BookingForm() {
       selectedCalendarDay.slots.length === 0
   )
 
+  const syncMidtransPayment = React.useCallback(async (bookingId: string, orderId?: string) => {
+    try {
+      await fetch("/api/payments/midtrans/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId, orderId }),
+      })
+    } catch (error) {
+      console.error(error)
+    }
+  }, [])
+
+  const openMidtransPopup = React.useCallback(
+    (token: string, bookingId: string) => {
+      if (!window.snap) {
+        toast.error("Midtrans payment dialog is not ready")
+        return
+      }
+
+      window.snap.pay(token, {
+        onSuccess: async (result) => {
+          await syncMidtransPayment(bookingId, result.order_id)
+          toast.success("Payment successful")
+          router.push(`/booking/payment?status=finish&bookingId=${bookingId}`)
+        },
+        onPending: async (result) => {
+          await syncMidtransPayment(bookingId, result.order_id)
+          toast.message("Payment is still pending")
+          router.push(`/booking/payment?status=pending&bookingId=${bookingId}`)
+        },
+        onError: async (result) => {
+          await syncMidtransPayment(bookingId, result.order_id)
+          toast.error("Payment failed")
+          router.push(`/booking/payment?status=error&bookingId=${bookingId}`)
+        },
+        onClose: () => {
+          toast.message(
+            "Booking has been created. Continue payment from this page when you are ready."
+          )
+        },
+      })
+    },
+    [router, syncMidtransPayment]
+  )
+
   const handleSubmit = form.handleSubmit(async (values) => {
     if (!values.locationId) {
       toast.error("Select a position first")
@@ -399,6 +567,21 @@ export default function BookingForm() {
       toast.error("Select a therapist first")
       return
     }
+    if (!midtransEnabled) {
+      toast.error("Midtrans is not configured for this booking page")
+      return
+    }
+    if (!midtransReady) {
+      toast.error("Midtrans payment dialog is still loading")
+      return
+    }
+
+    if (createdBookingId && activePaymentToken) {
+      openMidtransPopup(activePaymentToken, createdBookingId)
+      return
+    }
+
+    setIsProcessingPayment(true)
     try {
       const patientRes = await fetch("/api/patients", {
         method: "POST",
@@ -424,6 +607,11 @@ export default function BookingForm() {
       }
 
       const therapist = therapists.find((item) => item.id === values.therapistId)
+      const service = availableServices.find((item) => item.id === values.serviceId)
+      if (!service) {
+        toast.error("Service not found for selected therapist")
+        return
+      }
 
       const bookingRes = await fetch("/api/bookings", {
         method: "POST",
@@ -435,7 +623,9 @@ export default function BookingForm() {
           locationAddress: location.address,
           therapistId: values.therapistId,
           therapistName: therapist?.name,
-          serviceName: values.serviceName,
+          serviceId: service.id,
+          serviceName: service.name,
+          servicePrice: service.price,
           complaint: values.complaint,
           startISO: values.slotStartISO,
           endISO: values.slotEndISO,
@@ -447,15 +637,29 @@ export default function BookingForm() {
         toast.error(payload?.message || "Failed to create booking")
         return
       }
+      const booking = await bookingRes.json()
 
-      toast.success("Booking created")
-      form.reset()
-      setSelectedDate(undefined)
-      setSlots(null)
-      setStep(1)
+      const paymentRes = await fetch("/api/payments/midtrans/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId: booking.id }),
+      })
+
+      const paymentPayload = await paymentRes.json().catch(() => null)
+      if (!paymentRes.ok) {
+        toast.error(paymentPayload?.message || "Failed to start Midtrans payment")
+        setCreatedBookingId(booking.id)
+        return
+      }
+
+      setCreatedBookingId(booking.id)
+      setActivePaymentToken(paymentPayload.token)
+      openMidtransPopup(paymentPayload.token, booking.id)
     } catch (error) {
       console.error(error)
       toast.error("Server error")
+    } finally {
+      setIsProcessingPayment(false)
     }
   })
 
@@ -466,6 +670,9 @@ export default function BookingForm() {
     setSlotNotice(null)
     setCalendarSlots(null)
     setCalendarSlotNotice(null)
+    setCreatedBookingId(null)
+    setActivePaymentToken(null)
+    setIsProcessingPayment(false)
     setStep(1)
   }
 
@@ -481,10 +688,10 @@ export default function BookingForm() {
           <CardHeader>
             <CardTitle>Create Booking</CardTitle>
             <CardDescription>
-              Lengkapi data pasien, pilih lokasi & therapist, lalu tentukan jadwal.
+              Lengkapi data pasien, pilih lokasi & therapist, tentukan jadwal, lalu lanjut ke pembayaran.
             </CardDescription>
             <div className="mt-3 flex gap-2">
-              {[1, 2, 3].map((index) => (
+              {[1, 2, 3, 4].map((index) => (
                 <div
                   key={index}
                   className={`h-1 flex-1 rounded-full ${
@@ -585,7 +792,7 @@ export default function BookingForm() {
                         <FieldContent>
                           {availableTherapists.length === 0 ? (
                             <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                              No therapist available for this position.
+                              No active therapist available.
                             </div>
                           ) : (
                             <Select
@@ -604,34 +811,53 @@ export default function BookingForm() {
                               </SelectContent>
                             </Select>
                           )}
+                          {watchedLocationId && watchedTherapistId && !selectedPairHasSchedule ? (
+                            <p className="text-xs text-amber-600">
+                              Schedule for this therapist at the selected position is not set yet.
+                              You can still choose a service, but available slots will appear after
+                              the schedule is configured in the dashboard.
+                            </p>
+                          ) : null}
                           <FieldError errors={[form.formState.errors.therapistId]} />
                         </FieldContent>
                       </Field>
                       <Field>
-                        <FieldLabel>Service Name</FieldLabel>
+                        <FieldLabel>Service</FieldLabel>
                         <FieldContent>
-                          {availableServices.length === 0 ? (
+                          {!watchedTherapistId ? (
                             <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                              Add a service first.
+                              Select a therapist first.
+                            </div>
+                          ) : availableServices.length === 0 ? (
+                            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                              No services configured for this therapist.
                             </div>
                           ) : (
                             <Select
-                              value={form.watch("serviceName")}
-                              onValueChange={(value) => form.setValue("serviceName", value)}
+                              value={form.watch("serviceId")}
+                              onValueChange={(value) => form.setValue("serviceId", value)}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select a service" />
                               </SelectTrigger>
                               <SelectContent>
                                 {availableServices.map((service) => (
-                                  <SelectItem key={service.id} value={service.name}>
-                                    {service.name}
+                                  <SelectItem key={service.id} value={service.id}>
+                                    {service.name} - {formatCurrency(service.price)}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
                           )}
-                          <FieldError errors={[form.formState.errors.serviceName]} />
+                          {selectedService && (
+                            <p className="text-muted-foreground text-xs">
+                              Price {formatCurrency(selectedService.price)}
+                              {selectedService.durationMins
+                                ? ` - ${selectedService.durationMins} mins`
+                                : ""}
+                            </p>
+                          )}
+                          <FieldError errors={[form.formState.errors.serviceId]} />
                         </FieldContent>
                       </Field>
                     </FieldGroup>
@@ -733,6 +959,85 @@ export default function BookingForm() {
                     </FieldGroup>
                   </div>
                 )}
+
+                {step === 4 && (
+                  <div className="rounded-xl border bg-muted/30 p-4">
+                    <div className="mb-3 text-sm font-medium">Payment</div>
+                    <div className="space-y-4">
+                      <div className="rounded-lg border bg-background p-4">
+                        <div className="mb-3 text-sm font-medium">Booking summary</div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-muted-foreground">Service</span>
+                            <span>{selectedService?.name ?? "-"}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-muted-foreground">Therapist</span>
+                            <span>{selectedTherapist?.name ?? "-"}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-muted-foreground">Position</span>
+                            <span>
+                              {locations.find((item) => item.id === watchedLocationId)?.city ??
+                                locations.find((item) => item.id === watchedLocationId)?.name ??
+                                "-"}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-muted-foreground">Schedule</span>
+                            <span>
+                              {selectedDate
+                                ? `${formatDateLabel(selectedDate)} ${form.getValues("slotStartISO") ? `, ${formatTime(form.getValues("slotStartISO"), slots?.timeZone)}` : ""}`
+                                : "-"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border bg-background p-4">
+                        <div className="mb-3 text-sm font-medium">Payment summary</div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-muted-foreground">Service price</span>
+                            <span>{formatCurrency(paymentBreakdown.subtotalAmount)}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-muted-foreground">
+                              PPN {paymentBreakdown.taxPercent}%
+                            </span>
+                            <span>{formatCurrency(paymentBreakdown.taxAmount)}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 border-t pt-2 text-base font-semibold">
+                            <span>Total</span>
+                            <span>{formatCurrency(paymentBreakdown.totalAmount)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                        Pembayaran akan diproses melalui Midtrans Snap. Setelah booking dibuat,
+                        popup pembayaran akan terbuka otomatis.
+                      </div>
+
+                      {!midtransEnabled ? (
+                        <div className="rounded-lg border border-dashed p-4 text-sm text-destructive">
+                          Midtrans belum dikonfigurasi di environment ini.
+                        </div>
+                      ) : !midtransReady ? (
+                        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                          Loading Midtrans payment dialog...
+                        </div>
+                      ) : null}
+
+                      {createdBookingId && activePaymentToken ? (
+                        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                          Booking sudah dibuat dan menunggu pembayaran. Klik tombol di bawah
+                          untuk membuka kembali popup Midtrans.
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </CardContent>
@@ -741,6 +1046,7 @@ export default function BookingForm() {
             <Button
               type="button"
               variant="outline"
+              disabled={Boolean(createdBookingId) || isProcessingPayment}
               onClick={() => {
                 if (step === 1) {
                   handleCancel()
@@ -751,7 +1057,7 @@ export default function BookingForm() {
             >
               {step === 1 ? "Cancel" : "Back"}
             </Button>
-            {step < 3 && (
+            {step < 4 && (
               <Button
                 type="button"
                 onClick={() => setStep(step + 1)}
@@ -759,15 +1065,29 @@ export default function BookingForm() {
                   loading ||
                   (step === 1 && (!watchedFullName?.trim() || !watchedPhone?.trim())) ||
                   (step === 2 &&
-                    (!watchedLocationId || !watchedTherapistId || !watchedServiceName?.trim()))
+                    (!watchedLocationId || !watchedTherapistId || !watchedServiceId)) ||
+                  (step === 3 && !form.getValues("slotStartISO"))
                 }
               >
                 Next
               </Button>
             )}
-            {step === 3 && (
-              <Button type="submit" disabled={form.formState.isSubmitting || loading}>
-                {form.formState.isSubmitting ? "Saving..." : "Save Booking"}
+            {step === 4 && (
+              <Button
+                type="submit"
+                disabled={
+                  form.formState.isSubmitting ||
+                  loading ||
+                  isProcessingPayment ||
+                  !midtransEnabled ||
+                  !midtransReady
+                }
+              >
+                {isProcessingPayment
+                  ? "Preparing Payment..."
+                  : createdBookingId && activePaymentToken
+                    ? "Continue Payment"
+                    : "Create Booking & Pay"}
               </Button>
             )}
           </CardFooter>

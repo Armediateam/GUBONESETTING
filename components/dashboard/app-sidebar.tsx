@@ -31,37 +31,37 @@ const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "/dashboard",
+      url: "/",
       icon: IconDashboard,
     },
    {
     title: "Bookings",
-    url: "/dashboard/bookings",
+    url: "/bookings",
     icon: IconCalendarEvent, // tetap kalender
   },
   {
     title: "Schedule",
-    url: "/dashboard/schedule",
+    url: "/schedule",
     icon: IconClock, // diganti icon jam supaya beda
   },
   {
     title: "Positions",
-    url: "/dashboard/locations",
+    url: "/locations",
     icon: IconMapPin,
   },
   {
     title: "Services",
-    url: "/dashboard/services",
+    url: "/services",
     icon: IconBriefcase,
   },
     {
       title: "Therapists",
-      url: "/dashboard/therapists",
+      url: "/therapists",
       icon: IconUserHeart,
     },
     {
       title: "Patients",
-      url: "/dashboard/patients",
+      url: "/patients",
       icon: IconUsers,
     }
   ],
@@ -139,9 +139,9 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="!p-1.5">
-              <Link href="/dashboard">
+              <Link href="/">
                 <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">Yen 2 Yen</span>
+                <span className="text-base font-semibold">GU Bone Setting</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

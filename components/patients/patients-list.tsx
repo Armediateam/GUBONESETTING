@@ -152,7 +152,7 @@ export function PatientsList() {
                   <TableRow key={patient.id} className="hover:bg-muted/40">
                       <TableCell className="font-medium">
                         <Link
-                          href={`/dashboard/patients/${patient.id}`}
+                          href={`/patients/${patient.id}`}
                           className="text-primary hover:underline"
                         >
                           {patient.fullName}
@@ -173,7 +173,7 @@ export function PatientsList() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
-                              <Link href={`/dashboard/patients/${patient.id}`}>
+                              <Link href={`/patients/${patient.id}`}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 Info selengkapnya
                               </Link>

@@ -19,15 +19,33 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+
+type ServiceItem = {
+  id: string
+  name: string
+  isActive?: boolean
+}
+
+type ServiceRateInput = {
+  serviceId: string
+  price: string
+}
 
 interface Therapist {
   id: string
   name: string
-  price: number
+  gender?: "Female" | "Male"
+  age?: number
+  serviceRates?: Array<{
+    serviceId: string
+    price: number
+  }>
   isActive: boolean
 }
 
@@ -37,22 +55,32 @@ interface TherapistMainProps {
   refreshKey: number
 }
 
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(value)
-
 export function TherapistMain({ search, visibleColumns, refreshKey }: TherapistMainProps) {
   const [therapists, setTherapists] = React.useState<Therapist[]>([])
+  const [services, setServices] = React.useState<ServiceItem[]>([])
   const [loading, setLoading] = React.useState(true)
   const [editOpen, setEditOpen] = React.useState(false)
   const [editingTherapist, setEditingTherapist] = React.useState<Therapist | null>(null)
   const [editForm, setEditForm] = React.useState({
     name: "",
-    price: "",
+    gender: "",
+    age: "",
+    serviceRates: [] as ServiceRateInput[],
   })
+
+  const loadServices = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/services")
+      if (!res.ok) {
+        throw new Error("Failed to load services")
+      }
+      const payload = await res.json()
+      setServices((payload.items ?? []).filter((item: ServiceItem) => item.isActive !== false))
+    } catch (error) {
+      console.error(error)
+      toast.error("Failed to load services")
+    }
+  }, [])
 
   const loadTherapists = React.useCallback(async () => {
     setLoading(true)
@@ -75,6 +103,10 @@ export function TherapistMain({ search, visibleColumns, refreshKey }: TherapistM
     loadTherapists()
   }, [loadTherapists, refreshKey])
 
+  React.useEffect(() => {
+    loadServices()
+  }, [loadServices])
+
   const filteredTherapists = therapists.filter(
     (d) => d.name.toLowerCase().includes(search.toLowerCase())
   )
@@ -83,20 +115,68 @@ export function TherapistMain({ search, visibleColumns, refreshKey }: TherapistM
     setEditingTherapist(therapist)
     setEditForm({
       name: therapist.name,
-      price: therapist.price.toString(),
+      gender: therapist.gender ?? "",
+      age: therapist.age?.toString() ?? "",
+      serviceRates: (therapist.serviceRates ?? []).map((item) => ({
+        serviceId: item.serviceId,
+        price: item.price.toString(),
+      })),
     })
     setEditOpen(true)
   }
 
+  const handleServiceCheckedChange = (serviceId: string, checked: boolean) => {
+    setEditForm((prev) => {
+      if (checked) {
+        if (prev.serviceRates.some((item) => item.serviceId === serviceId)) {
+          return prev
+        }
+        return {
+          ...prev,
+          serviceRates: [...prev.serviceRates, { serviceId, price: "" }],
+        }
+      }
+
+      return {
+        ...prev,
+        serviceRates: prev.serviceRates.filter((item) => item.serviceId !== serviceId),
+      }
+    })
+  }
+
+  const handleServicePriceChange = (serviceId: string, value: string) => {
+    if (!/^\d*$/.test(value)) {
+      return
+    }
+
+    setEditForm((prev) => ({
+      ...prev,
+      serviceRates: prev.serviceRates.map((item) =>
+        item.serviceId === serviceId ? { ...item, price: value } : item
+      ),
+    }))
+  }
+
   const handleEditSave = async () => {
     if (!editingTherapist) return
+    if (!editForm.name.trim() || !editForm.gender || !editForm.age) {
+      toast.error("Name, gender, and age are required")
+      return
+    }
     try {
       const res = await fetch(`/api/therapists/${editingTherapist.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: editForm.name,
-          price: Number(editForm.price || 0),
+          name: editForm.name.trim(),
+          gender: editForm.gender,
+          age: Number(editForm.age),
+          serviceRates: editForm.serviceRates
+            .filter((item) => item.price.trim() !== "")
+            .map((item) => ({
+              serviceId: item.serviceId,
+              price: Number(item.price),
+            })),
         }),
       })
       const payload = await res.json()
@@ -168,7 +248,8 @@ export function TherapistMain({ search, visibleColumns, refreshKey }: TherapistM
           <TableHeader className="bg-muted">
             <TableRow>
               {visibleColumns.name && <TableHead>Name</TableHead>}
-              {visibleColumns.price && <TableHead>Price</TableHead>}
+              {visibleColumns.gender && <TableHead>Gender</TableHead>}
+              {visibleColumns.age && <TableHead>Age</TableHead>}
               {visibleColumns.active && <TableHead>Status</TableHead>}
               <TableHead></TableHead>
             </TableRow>
@@ -196,8 +277,18 @@ export function TherapistMain({ search, visibleColumns, refreshKey }: TherapistM
             ) : (
               filteredTherapists.map((doc) => (
                 <TableRow key={doc.id}>
-                  {visibleColumns.name && <TableCell>{doc.name}</TableCell>}
-                  {visibleColumns.price && <TableCell>{formatCurrency(doc.price)}</TableCell>}
+                  {visibleColumns.name && (
+                    <TableCell>
+                      <div className="font-medium">{doc.name}</div>
+                      <div className="text-muted-foreground text-xs">
+                        {(doc.serviceRates?.length ?? 0) > 0
+                          ? `${doc.serviceRates?.length ?? 0} services configured`
+                          : "No services configured"}
+                      </div>
+                    </TableCell>
+                  )}
+                  {visibleColumns.gender && <TableCell>{doc.gender ?? "-"}</TableCell>}
+                  {visibleColumns.age && <TableCell>{doc.age ? `${doc.age} yrs` : "-"}</TableCell>}
                   {visibleColumns.active && (
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -253,18 +344,80 @@ export function TherapistMain({ search, visibleColumns, refreshKey }: TherapistM
               />
             </div>
             <div className="grid gap-1">
-              <Label>Therapist Price (IDR)</Label>
+              <Label>Gender</Label>
+              <Select
+                value={editForm.gender || undefined}
+                onValueChange={(value) => setEditForm((prev) => ({ ...prev, gender: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Female">Female</SelectItem>
+                  <SelectItem value="Male">Male</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1">
+              <Label>Age</Label>
               <Input
                 type="number"
-                value={editForm.price}
+                value={editForm.age}
                 onChange={(e) =>
                   setEditForm((prev) => ({
                     ...prev,
-                    price: e.target.value.replace(/[^0-9]/g, ""),
+                    age: e.target.value.replace(/[^0-9]/g, ""),
                   }))
                 }
-                placeholder="250000"
+                placeholder="25"
               />
+            </div>
+            <div className="grid gap-3">
+              <div>
+                <Label>Services & Prices</Label>
+                <p className="text-muted-foreground text-sm">
+                  Centang layanan yang dimiliki therapist lalu isi harga per layanan.
+                </p>
+              </div>
+              {services.length === 0 ? (
+                <div className="text-muted-foreground rounded-md border border-dashed px-3 py-4 text-sm">
+                  Belum ada layanan aktif.
+                </div>
+              ) : (
+                <div className="space-y-3 rounded-md border p-3">
+                  {services.map((service) => {
+                    const selected = editForm.serviceRates.find(
+                      (item) => item.serviceId === service.id
+                    )
+
+                    return (
+                      <div
+                        key={service.id}
+                        className="grid gap-2 md:grid-cols-[1fr_180px] md:items-center"
+                      >
+                        <label className="flex items-center gap-3">
+                          <Checkbox
+                            checked={Boolean(selected)}
+                            onCheckedChange={(checked) =>
+                              handleServiceCheckedChange(service.id, checked === true)
+                            }
+                          />
+                          <span className="text-sm">{service.name}</span>
+                        </label>
+                        <Input
+                          type="number"
+                          value={selected?.price ?? ""}
+                          onChange={(event) =>
+                            handleServicePriceChange(service.id, event.target.value)
+                          }
+                          placeholder="250000"
+                          disabled={!selected}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>

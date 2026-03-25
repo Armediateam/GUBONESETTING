@@ -20,6 +20,7 @@ import {
   MAX_FUTURE_DAYS,
   MIN_NOTICE_HOURS,
   SLOT_DURATIONS,
+  defaultSchedule,
   scheduleSchema,
   type Schedule,
   type TimeRange,
@@ -164,8 +165,53 @@ const emptySchedule: Schedule = {
   maxBookingsPerDay: null,
 }
 
+type WeekendDayKey = "sat" | "sun"
+
+const weekendDays: Array<{
+  key: WeekendDayKey
+  label: string
+  closedDescription: string
+}> = [
+  {
+    key: "sat",
+    label: "Saturday",
+    closedDescription: "No bookings will be offered on Saturday.",
+  },
+  {
+    key: "sun",
+    label: "Sunday",
+    closedDescription: "No bookings will be offered on Sunday.",
+  },
+]
+
+const normalizeEditableSchedule = (value?: Partial<Schedule> | null): Schedule => {
+  const fallback = defaultSchedule
+
+  return {
+    timezone: value?.timezone ?? fallback.timezone,
+    weekly: {
+      mon: value?.weekly?.mon ?? fallback.weekly.mon,
+      tue: value?.weekly?.tue ?? fallback.weekly.tue,
+      wed: value?.weekly?.wed ?? fallback.weekly.wed,
+      thu: value?.weekly?.thu ?? fallback.weekly.thu,
+      fri: value?.weekly?.fri ?? fallback.weekly.fri,
+      sat: value?.weekly?.sat ?? fallback.weekly.sat,
+      sun: value?.weekly?.sun ?? fallback.weekly.sun,
+    },
+    overrides: Array.isArray(value?.overrides) ? value.overrides : fallback.overrides,
+    slotDurationMins: value?.slotDurationMins ?? fallback.slotDurationMins,
+    bufferMins: value?.bufferMins ?? fallback.bufferMins,
+    minNoticeHours: value?.minNoticeHours ?? fallback.minNoticeHours,
+    maxFutureDays: value?.maxFutureDays ?? fallback.maxFutureDays,
+    maxBookingsPerDay:
+      value?.maxBookingsPerDay === undefined
+        ? fallback.maxBookingsPerDay
+        : value.maxBookingsPerDay,
+  }
+}
+
 export function ScheduleMain() {
-  const { selectedLocation, selectedLocationId, locations, setSelectedLocationId } = useLocation()
+  const { selectedLocationId, locations, setSelectedLocationId } = useLocation()
   const [therapists, setTherapists] = React.useState<TherapistRecord[]>([])
   const [selectedTherapistId, setSelectedTherapistId] = React.useState<string | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
@@ -218,9 +264,6 @@ export function ScheduleMain() {
         const items = data.items ?? []
         if (active) {
           setTherapists(items)
-          if (!selectedTherapistId && items.length > 0) {
-            setSelectedTherapistId(items[0].id)
-          }
         }
       } catch (error) {
         console.error(error)
@@ -232,6 +275,17 @@ export function ScheduleMain() {
       active = false
     }
   }, [])
+
+  React.useEffect(() => {
+    const hasSelectedTherapist =
+      selectedTherapistId && therapists.some((therapist) => therapist.id === selectedTherapistId)
+
+    if (hasSelectedTherapist) {
+      return
+    }
+
+    setSelectedTherapistId(therapists[0]?.id ?? null)
+  }, [selectedTherapistId, therapists])
 
   React.useEffect(() => {
     let active = true
@@ -253,7 +307,7 @@ export function ScheduleMain() {
         }
         const data = (await res.json()) as Schedule
         if (active) {
-          const normalized = { ...data, weekly: emptyWeekly() }
+          const normalized = normalizeEditableSchedule(data)
           reset(normalized)
           setSavedSchedule(normalized)
           setLastSavedAt(new Date().toISOString())
@@ -329,10 +383,7 @@ export function ScheduleMain() {
     }
     setIsSaving(true)
     try {
-      const payload: Schedule = {
-        ...values,
-        weekly: emptyWeekly(),
-      }
+      const payload = normalizeEditableSchedule(values)
       const res = await fetch(
         `/api/schedule?locationId=${selectedLocationId}&therapistId=${selectedTherapistId}`,
         {
@@ -348,7 +399,7 @@ export function ScheduleMain() {
       }
 
       const data = (await res.json()) as Schedule
-      const normalized = { ...data, weekly: emptyWeekly() }
+      const normalized = normalizeEditableSchedule(data)
       reset(normalized)
       setSavedSchedule(normalized)
       setLastSavedAt(new Date().toISOString())
@@ -366,7 +417,9 @@ export function ScheduleMain() {
   }
 
   const previewSchedule = React.useMemo(() => {
-    const parsed = scheduleSchema.safeParse(scheduleWatch)
+    const parsed = scheduleSchema.safeParse(
+      normalizeEditableSchedule(scheduleWatch as Partial<Schedule> | undefined)
+    )
     return parsed.success ? parsed.data : null
   }, [scheduleWatch])
 
@@ -493,6 +546,21 @@ export function ScheduleMain() {
     overridesArray.remove(index)
   }
 
+  const updateWeekendEnabled = (dayKey: WeekendDayKey, enabled: boolean) => {
+    setValue(`weekly.${dayKey}.enabled`, enabled, {
+      shouldDirty: true,
+      shouldValidate: true,
+    })
+
+    const currentRanges = form.getValues(`weekly.${dayKey}.ranges`) ?? []
+    if (enabled && currentRanges.length === 0) {
+      setValue(`weekly.${dayKey}.ranges`, [defaultRange], {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+    }
+  }
+
   const updateOverrideClosed = (checked: boolean) => {
     if (selectedOverrideIndex < 0) return
     setValue(`overrides.${selectedOverrideIndex}.closed`, checked, {
@@ -541,7 +609,7 @@ export function ScheduleMain() {
     <form onSubmit={onSubmit} className="space-y-6">
       <div className="sticky top-0 z-10 flex flex-col gap-3 rounded-xl border bg-background/95 px-3 py-3 shadow-sm backdrop-blur sm:px-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">
             Schedule
           </p>
           <h1 className="text-xl font-semibold">Date-based availability</h1>
@@ -999,6 +1067,60 @@ export function ScheduleMain() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
+              <CardTitle>Weekend Availability</CardTitle>
+              <CardDescription>
+                Set whether Saturday and Sunday are open, and define their hours.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {weekendDays.map((day) => {
+                const dayConfig = scheduleWatch?.weekly?.[day.key]
+                const isEnabled = dayConfig?.enabled ?? false
+
+                return (
+                  <div key={day.key} className="space-y-4 rounded-lg border p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="text-sm font-medium">{day.label}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {isEnabled
+                            ? "Bookings can be accepted on this day."
+                            : day.closedDescription}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant={isEnabled ? "secondary" : "outline"}>
+                          {isEnabled ? "Open" : "Closed"}
+                        </Badge>
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={(checked) =>
+                            updateWeekendEnabled(day.key, checked)
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    {isEnabled ? (
+                      <WeeklyDayRanges
+                        control={control}
+                        register={register}
+                        errors={errors}
+                        dayKey={day.key}
+                      />
+                    ) : (
+                      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                        {day.closedDescription}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Booking rules</CardTitle>
               <CardDescription>
                 Set slot, buffer, and booking window limits.
@@ -1271,6 +1393,84 @@ function OverrideRanges({
                 variant="ghost"
                 size="icon"
                 onClick={() => rangesArray.remove(rangeIndex)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )
+      })}
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => rangesArray.append(defaultRange)}
+      >
+        <Plus className="mr-2 h-4 w-4" />
+        Add Range
+      </Button>
+
+      {rangeMessage && <FieldError errors={[{ message: rangeMessage }]} />}
+    </div>
+  )
+}
+
+function WeeklyDayRanges({
+  control,
+  register,
+  errors,
+  dayKey,
+}: {
+  control: Control<Schedule>
+  register: UseFormRegister<Schedule>
+  errors: FieldErrors<Schedule>
+  dayKey: WeekendDayKey
+}) {
+  const rangesArray = useFieldArray({
+    control,
+    name: `weekly.${dayKey}.ranges` as const,
+  })
+
+  const rangeErrors = errors.weekly?.[dayKey]?.ranges
+  const rangeMessage =
+    rangeErrors && "message" in rangeErrors ? (rangeErrors.message as string) : undefined
+
+  return (
+    <div className="space-y-3">
+      {rangesArray.fields.map((range, rangeIndex) => {
+        const startError = errors.weekly?.[dayKey]?.ranges?.[rangeIndex]?.start
+        const endError = errors.weekly?.[dayKey]?.ranges?.[rangeIndex]?.end
+
+        return (
+          <div
+            key={range.id}
+            className="grid gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_1fr_auto]"
+          >
+            <div>
+              <FieldLabel>Mulai</FieldLabel>
+              <Input
+                type="time"
+                step={60}
+                {...register(`weekly.${dayKey}.ranges.${rangeIndex}.start` as const)}
+              />
+              <FieldError errors={[startError]} />
+            </div>
+            <div>
+              <FieldLabel>Selesai</FieldLabel>
+              <Input
+                type="time"
+                step={60}
+                {...register(`weekly.${dayKey}.ranges.${rangeIndex}.end` as const)}
+              />
+              <FieldError errors={[endError]} />
+            </div>
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => rangesArray.remove(rangeIndex)}
+                disabled={rangesArray.fields.length <= 1}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

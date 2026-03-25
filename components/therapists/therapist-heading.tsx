@@ -9,7 +9,8 @@ import { AddTherapistDialog } from "../add-therapist-dialog";
 // gunakan tipe Columns yang sama
 type Columns = {
   name: boolean;
-  price: boolean;
+  gender: boolean;
+  age: boolean;
   active: boolean;
 };
 

@@ -9,7 +9,6 @@ import {
   CalendarPlus,
   CircleUserRound,
   FileClock,
-  UserPlus,
   XCircle,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -131,7 +130,7 @@ export function DashboardHome() {
     } finally {
       setLoading(false)
     }
-  }, [dashboardLocationId])
+  }, [dashboardLocationId, router])
 
   React.useEffect(() => {
     loadData()
@@ -145,7 +144,7 @@ export function DashboardHome() {
           Add a position before managing schedules and bookings.
         </p>
         <Button asChild>
-          <Link href="/dashboard/locations">Manage Positions</Link>
+          <Link href="/locations">Manage Positions</Link>
         </Button>
       </div>
     )
@@ -232,13 +231,13 @@ export function DashboardHome() {
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button asChild variant="outline">
-              <Link href="/dashboard/bookings">
+              <Link href="/bookings">
                 <CalendarPlus className="mr-2 h-4 w-4" />
                 Create Booking
               </Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/dashboard/schedule">
+              <Link href="/schedule">
                 <FileClock className="mr-2 h-4 w-4" />
                 Edit Schedule
               </Link>

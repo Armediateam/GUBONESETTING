@@ -300,7 +300,7 @@ export function PatientDetail() {
         return
       }
       toast.success("Patient deleted")
-      router.replace("/dashboard/patients")
+      router.replace("/patients")
     } catch (error) {
       console.error(error)
       toast.error("Server error")
@@ -331,7 +331,7 @@ export function PatientDetail() {
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link href="/dashboard/patients">Patients</Link>
+              <Link href="/patients">Patients</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />

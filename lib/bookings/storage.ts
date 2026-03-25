@@ -75,6 +75,49 @@ export const updateBooking = async (id: string, input: BookingInput) => {
   return updated
 }
 
+export const findBookingById = async (id: string) => {
+  const bookings = await readBookings()
+  return bookings.find((booking) => booking.id === id) ?? null
+}
+
+export const findBookingByOrderId = async (orderId: string) => {
+  const bookings = await readBookings()
+  return (
+    bookings.find((booking) => {
+      const orderIds = booking.payment?.orderIds ?? []
+      return booking.payment?.orderId === orderId || orderIds.includes(orderId)
+    }) ?? null
+  )
+}
+
+export const patchBooking = async (
+  id: string,
+  patch: Partial<BookingRecord> & { payment?: Partial<NonNullable<BookingRecord["payment"]>> }
+) => {
+  const bookings = await readBookings()
+  const index = bookings.findIndex((booking) => booking.id === id)
+  if (index === -1) {
+    return null
+  }
+
+  const current = bookings[index]
+  const updated: BookingRecord = {
+    ...current,
+    ...patch,
+    payment:
+      patch.payment === undefined
+        ? current.payment
+        : {
+            ...(current.payment ?? {}),
+            ...patch.payment,
+          },
+  }
+
+  bookings[index] = updated
+  await writeBookings(bookings)
+  return updated
+}
+
 export const deleteBooking = async (id: string) => {
   const bookings = await readBookings()
   const next = bookings.filter((booking) => booking.id !== id)

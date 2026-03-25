@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 
 import { signToken } from "@/lib/auth/jwt"
-import { createUser, findUserByEmail } from "@/lib/auth/users"
+import { countUsers, createUser, findUserByEmail } from "@/lib/auth/users"
 
 export async function POST(request: Request) {
   try {
@@ -14,6 +14,14 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { message: "Name, email, and password are required" },
         { status: 400 }
+      )
+    }
+
+    const existingUsers = await countUsers()
+    if (existingUsers > 0) {
+      return NextResponse.json(
+        { message: "Initial account has already been created" },
+        { status: 403 }
       )
     }
 

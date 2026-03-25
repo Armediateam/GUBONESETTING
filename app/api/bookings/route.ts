@@ -6,6 +6,7 @@ import { bookingInputSchema, bookingStatusSchema } from "@/lib/bookings/schema"
 import { createBooking, readBookings } from "@/lib/bookings/storage"
 import { ensureSeedData } from "@/lib/seed/ensure"
 import { readLocations } from "@/lib/locations/storage"
+import { readServices } from "@/lib/services/storage"
 import { readTherapists } from "@/lib/therapists/storage"
 import { readPatients } from "@/lib/patients/storage"
 
@@ -105,6 +106,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Therapist is not active" }, { status: 400 })
     }
 
+    const services = await readServices()
+    const selectedService =
+      services.find((item) => item.id === parsed.data.serviceId) ??
+      services.find((item) => item.name === parsed.data.serviceName)
+
+    if (!selectedService) {
+      return NextResponse.json({ message: "Service not found" }, { status: 400 })
+    }
+
+    if (selectedService.isActive === false) {
+      return NextResponse.json({ message: "Service is not active" }, { status: 400 })
+    }
+
+    const therapistRate = therapist.serviceRates.find(
+      (item) => item.serviceId === selectedService.id
+    )
+
+    if (!therapistRate) {
+      return NextResponse.json(
+        { message: "Selected service is not configured for this therapist" },
+        { status: 400 }
+      )
+    }
+
     const scheduleConfig = await readScheduleConfig(
       parsed.data.locationId,
       parsed.data.therapistId
@@ -150,6 +175,9 @@ export async function POST(request: NextRequest) {
       status: bookingStatusSchema.safeParse(parsed.data.status).success
         ? parsed.data.status
         : "scheduled",
+      serviceId: selectedService.id,
+      serviceName: selectedService.name,
+      servicePrice: therapistRate.price,
       locationName: parsed.data.locationName ?? location.city ?? location.name,
       locationAddress: parsed.data.locationAddress ?? location.address,
       therapistName: parsed.data.therapistName ?? therapist.name,

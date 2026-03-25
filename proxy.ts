@@ -3,12 +3,12 @@ import type { NextRequest } from "next/server"
 import { jwtVerify } from "jose"
 
 const isPublicPath = (pathname: string) => {
-  return pathname === "/login" || pathname.startsWith("/api/auth")
+  return pathname === "/login" || pathname === "/setup" || pathname.startsWith("/api/auth")
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
-  if (!pathname.startsWith("/dashboard") || isPublicPath(pathname)) {
+  if (isPublicPath(pathname)) {
     return NextResponse.next()
   }
 
@@ -38,5 +38,16 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: [
+    "/",
+    "/bookings/:path*",
+    "/locations/:path*",
+    "/patients/:path*",
+    "/profile/:path*",
+    "/schedule/:path*",
+    "/services/:path*",
+    "/settings/:path*",
+    "/therapists/:path*",
+    "/dashboard/:path*",
+  ],
 }
