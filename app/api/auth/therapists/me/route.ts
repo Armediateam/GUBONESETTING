@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 
+import { getAuthApiErrorMessage } from "@/lib/auth/api-errors"
 import { verifyToken } from "@/lib/auth/jwt"
 import { findUserById, updateUser } from "@/lib/auth/users"
 
@@ -39,7 +40,10 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("Failed to load profile", error)
-    return NextResponse.json({ message: "Server error" }, { status: 500 })
+    return NextResponse.json(
+      { message: getAuthApiErrorMessage(error) },
+      { status: 500 }
+    )
   }
 }
 
@@ -85,6 +89,9 @@ export async function PATCH(request: NextRequest) {
     })
   } catch (error) {
     console.error("Failed to update profile", error)
-    return NextResponse.json({ message: "Server error" }, { status: 500 })
+    return NextResponse.json(
+      { message: getAuthApiErrorMessage(error) },
+      { status: 500 }
+    )
   }
 }

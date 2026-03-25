@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 
+import { getAuthApiErrorMessage } from "@/lib/auth/api-errors"
 import { signToken } from "@/lib/auth/jwt"
 import { findUserByEmail } from "@/lib/auth/users"
 
@@ -20,6 +21,10 @@ export async function POST(request: Request) {
     const user = await findUserByEmail(email)
     if (!user) {
       return NextResponse.json({ message: "Invalid credentials" }, { status: 401 })
+    }
+
+    if (!user.passwordHash) {
+      throw new Error("USER_PASSWORD_HASH_MISSING")
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash)
@@ -49,6 +54,9 @@ export async function POST(request: Request) {
     return response
   } catch (error) {
     console.error("Failed to login", error)
-    return NextResponse.json({ message: "Server error" }, { status: 500 })
+    return NextResponse.json(
+      { message: getAuthApiErrorMessage(error) },
+      { status: 500 }
+    )
   }
 }

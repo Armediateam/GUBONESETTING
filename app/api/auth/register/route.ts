@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 
+import { getAuthApiErrorMessage } from "@/lib/auth/api-errors"
 import { signToken } from "@/lib/auth/jwt"
 import { countUsers, createUser, findUserByEmail } from "@/lib/auth/users"
 
@@ -61,6 +62,9 @@ export async function POST(request: Request) {
     return response
   } catch (error) {
     console.error("Failed to register", error)
-    return NextResponse.json({ message: "Server error" }, { status: 500 })
+    return NextResponse.json(
+      { message: getAuthApiErrorMessage(error) },
+      { status: 500 }
+    )
   }
 }
