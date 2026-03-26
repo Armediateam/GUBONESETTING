@@ -215,12 +215,7 @@ export function generateAvailableSlots({
       }
     }
 
-    const limitedSlots =
-      schedule.maxBookingsPerDay && schedule.maxBookingsPerDay > 0
-        ? slots.slice(0, schedule.maxBookingsPerDay)
-        : slots
-
-    results.push({ date: currentKey, slots: limitedSlots })
+    results.push({ date: currentKey, slots })
 
     if (currentKey === endKey) {
       break

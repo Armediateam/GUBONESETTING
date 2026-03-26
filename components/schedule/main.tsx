@@ -162,7 +162,6 @@ const emptySchedule: Schedule = {
   bufferMins: 10,
   minNoticeHours: 2,
   maxFutureDays: 30,
-  maxBookingsPerDay: null,
 }
 
 type WeekendDayKey = "sat" | "sun"
@@ -203,10 +202,6 @@ const normalizeEditableSchedule = (value?: Partial<Schedule> | null): Schedule =
     bufferMins: value?.bufferMins ?? fallback.bufferMins,
     minNoticeHours: value?.minNoticeHours ?? fallback.minNoticeHours,
     maxFutureDays: value?.maxFutureDays ?? fallback.maxFutureDays,
-    maxBookingsPerDay:
-      value?.maxBookingsPerDay === undefined
-        ? fallback.maxBookingsPerDay
-        : value.maxBookingsPerDay,
   }
 }
 
@@ -1326,24 +1321,6 @@ export function ScheduleMain() {
                   </Field>
                 </div>
 
-                <Field>
-                  <FieldLabel>Max Bookings per Day (optional)</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      type="number"
-                      min={1}
-                      placeholder="No limit"
-                      {...register("maxBookingsPerDay", {
-                        setValueAs: (value) =>
-                          value === "" ? null : Number(value),
-                      })}
-                    />
-                    <FieldDescription>
-                      Leave empty if there is no daily booking limit.
-                    </FieldDescription>
-                    <FieldError errors={[errors.maxBookingsPerDay]} />
-                  </FieldContent>
-                </Field>
               </FieldGroup>
             </CardContent>
           </Card>

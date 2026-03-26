@@ -112,14 +112,6 @@ const weeklySchema = z.object({
   sun: dayAvailabilitySchema,
 })
 
-const numberOrNull = z.preprocess((value) => {
-  if (value === "" || value === null || value === undefined) {
-    return null
-  }
-  const asNumber = Number(value)
-  return Number.isNaN(asNumber) ? value : asNumber
-}, z.number().int().min(1).nullable())
-
 export const scheduleSchema = z
   .object({
     timezone: z.string().min(1, { message: "Timezone is required" }),
@@ -152,7 +144,6 @@ export const scheduleSchema = z
       z.literal(60),
       z.literal(90),
     ]),
-    maxBookingsPerDay: numberOrNull.optional(),
   })
   .superRefine((schedule, ctx) => {
     const seen = new Set<string>()
@@ -194,5 +185,4 @@ export const defaultSchedule: Schedule = {
   bufferMins: 10,
   minNoticeHours: 2,
   maxFutureDays: 30,
-  maxBookingsPerDay: null,
 }
