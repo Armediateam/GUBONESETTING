@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import { getAuthApiErrorMessage } from "@/lib/auth/api-errors"
 import { verifyToken } from "@/lib/auth/jwt"
-import { findUserById, updateUser } from "@/lib/auth/users"
+import { deleteUser, findUserById, updateUser } from "@/lib/auth/users"
 
 const getTokenFromRequest = (request: NextRequest) => {
   const authHeader = request.headers.get("authorization")
@@ -89,6 +89,41 @@ export async function PATCH(request: NextRequest) {
     })
   } catch (error) {
     console.error("Failed to update profile", error)
+    return NextResponse.json(
+      { message: getAuthApiErrorMessage(error) },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const token = getToken(request)
+    if (!token) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
+    }
+
+    const payload = verifyToken(token)
+    const user = await findUserById(payload.sub)
+    if (!user) {
+      return NextResponse.json({ message: "User not found" }, { status: 404 })
+    }
+
+    const deleted = await deleteUser(payload.sub)
+    if (!deleted) {
+      return NextResponse.json({ message: "User not found" }, { status: 404 })
+    }
+
+    const response = NextResponse.json({ ok: true })
+    response.cookies.set("auth_token", "", {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    })
+    return response
+  } catch (error) {
+    console.error("Failed to delete profile", error)
     return NextResponse.json(
       { message: getAuthApiErrorMessage(error) },
       { status: 500 }

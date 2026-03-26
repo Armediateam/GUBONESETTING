@@ -32,6 +32,7 @@ export default function ProfilePage() {
 
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
   const [activeStatus, setActiveStatus] = React.useState(true);
   const [isAuthenticated, setIsAuthenticated] = React.useState(true);
   const [accountForm, setAccountForm] = React.useState({
@@ -156,8 +157,46 @@ export default function ProfilePage() {
             <Button onClick={handleSave} disabled={saving} size="sm">
               {saving ? "Saving..." : "Save Changes"}
             </Button>
-            <Button variant="destructive" size="sm" onClick={() => router.back()} disabled={saving}>
-              Delete Account
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={saving || deleting}
+              onClick={async () => {
+                const confirmed = window.confirm(
+                  "Hapus akun ini? Tindakan ini tidak bisa dibatalkan."
+                );
+                if (!confirmed) return;
+
+                setDeleting(true);
+                try {
+                  const res = await fetch("/api/auth/therapists/me", {
+                    method: "DELETE",
+                  });
+                  const data = await res.json();
+
+                  if (res.status === 401) {
+                    setIsAuthenticated(false);
+                    router.replace("/login");
+                    return;
+                  }
+
+                  if (!res.ok) {
+                    toast.error(data.message || "Gagal menghapus akun");
+                    return;
+                  }
+
+                  setIsAuthenticated(false);
+                  toast.success("Akun berhasil dihapus");
+                  router.replace("/login");
+                } catch (err) {
+                  console.error(err);
+                  toast.error("Server error");
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+            >
+              {deleting ? "Deleting..." : "Delete Account"}
             </Button>
           </div>
         </CardHeader>
@@ -336,17 +375,25 @@ export default function ProfilePage() {
                 onClick={async () => {
                   setAccountSaving(true);
                   try {
+                    const name = accountForm.name.trim();
+                    const email = accountForm.email.trim().toLowerCase();
+                    const password = accountForm.password;
+
+                    if (!name || !email || !password) {
+                      toast.error("Nama, email, dan password wajib diisi");
+                      return;
+                    }
                     if (accountForm.password !== accountForm.confirmPassword) {
                       toast.error("Password tidak sama");
                       return;
                     }
-                    const res = await fetch("/api/auth/register", {
+                    const res = await fetch("/api/auth/users", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
-                        name: accountForm.name,
-                        email: accountForm.email,
-                        password: accountForm.password,
+                        name,
+                        email,
+                        password,
                       }),
                     });
                     const payload = await res.json();

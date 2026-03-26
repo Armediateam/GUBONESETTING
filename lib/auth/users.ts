@@ -46,3 +46,10 @@ export const updateUser = async (id: string, updates: Partial<UserRecord>) => {
   await collection.updateOne({ _id }, { $set: updates })
   return collection.findOne({ _id })
 }
+
+export const deleteUser = async (id: string) => {
+  const collection = await usersCollection()
+  const _id = new ObjectId(id)
+  const result = await collection.deleteOne({ _id })
+  return result.deletedCount > 0
+}
