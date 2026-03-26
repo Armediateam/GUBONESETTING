@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { CalendarIcon, Filter, MoreVertical, Plus, Search, X } from "lucide-react"
+import { CalendarIcon, Download, Filter, MoreVertical, Plus, Search, X } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -254,6 +254,14 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value)
 
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;")
+
 export function BookingDashboard() {
   const totalBookingSteps = 5
   const [paymentMethodDraft, setPaymentMethodDraft] = React.useState<
@@ -298,6 +306,7 @@ export function BookingDashboard() {
   const [dateRangeFilter, setDateRangeFilter] = React.useState<string>("all")
   const [dateFrom, setDateFrom] = React.useState<string>("")
   const [dateTo, setDateTo] = React.useState<string>("")
+  const [isExporting, setIsExporting] = React.useState(false)
 
   const applyDateRangeFilter = React.useCallback((value: string) => {
     setDateRangeFilter(value)
@@ -887,6 +896,10 @@ export function BookingDashboard() {
     return new Map(patients.map((patient) => [patient.id, patient.fullName]))
   }, [patients])
 
+  const patientRecordLookup = React.useMemo(() => {
+    return new Map(patients.map((patient) => [patient.id, patient]))
+  }, [patients])
+
   const therapistLookup = React.useMemo(() => {
     return new Map(therapists.map((therapist) => [therapist.id, therapist.name]))
   }, [therapists])
@@ -973,6 +986,141 @@ export function BookingDashboard() {
     [bookingStep, totalBookingSteps]
   )
 
+  const handleExportExcel = React.useCallback(() => {
+    if (bookings.length === 0) {
+      toast.error("Tidak ada data booking untuk diexport")
+      return
+    }
+
+    try {
+      setIsExporting(true)
+
+      const filterSummary = [
+        statusFilter ? `Status: ${statusLabel[statusFilter]}` : null,
+        locationFilter
+          ? `Position: ${
+              availableLocations.find((location) => location.id === locationFilter)?.city ??
+              availableLocations.find((location) => location.id === locationFilter)?.name ??
+              "Position"
+            }`
+          : null,
+        patientFilter
+          ? `Patient: ${patientRecordLookup.get(patientFilter)?.fullName ?? "Selected patient"}`
+          : null,
+        dateFrom || dateTo
+          ? `Date: ${dateFrom || "-"} s/d ${dateTo || "-"}`
+          : null,
+        debouncedSearch ? `Search: ${debouncedSearch}` : null,
+      ]
+        .filter(Boolean)
+        .join(" | ")
+
+      const rows = bookings
+        .map((booking, index) => {
+          const patient = patientRecordLookup.get(booking.patientId)
+          const therapistName =
+            therapistLookup.get(booking.therapistId) ?? booking.therapistName ?? "-"
+          const paymentMethod =
+            paymentMethodLabel[booking.payment?.paymentType ?? booking.payment?.provider ?? ""] ??
+            "Not set"
+
+          const values = [
+            String(index + 1),
+            booking.id,
+            patient?.fullName ?? patientLookup.get(booking.patientId) ?? "Unknown",
+            patient?.phone ?? "-",
+            patient?.email || "-",
+            booking.complaint ?? "-",
+            booking.serviceName,
+            formatDate(booking.startISO),
+            `${formatTime(booking.startISO)} - ${formatTime(booking.endISO)}`,
+            statusLabel[booking.status],
+            paymentLabel[booking.paymentStatus ?? "pending"],
+            paymentMethod,
+            typeof booking.payment?.grossAmount === "number"
+              ? String(booking.payment.grossAmount)
+              : "-",
+            therapistName,
+            booking.locationName ?? "-",
+            booking.locationAddress ?? "-",
+            formatDateTime(booking.createdAt),
+          ]
+
+          return `<tr>${values
+            .map((value) => `<td>${escapeHtml(value)}</td>`)
+            .join("")}</tr>`
+        })
+        .join("")
+
+      const workbook = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+  </head>
+  <body>
+    <table border="1">
+      <tr><th colspan="17">Bookings Export</th></tr>
+      <tr><td colspan="17">Generated at: ${escapeHtml(formatDateTime(new Date().toISOString()))}</td></tr>
+      <tr><td colspan="17">Filters: ${escapeHtml(filterSummary || "None")}</td></tr>
+      <tr>
+        <th>No</th>
+        <th>Booking ID</th>
+        <th>Patient</th>
+        <th>Phone</th>
+        <th>Email</th>
+        <th>Complaint</th>
+        <th>Service</th>
+        <th>Date Booking</th>
+        <th>Hour Booking</th>
+        <th>Status</th>
+        <th>Payment Status</th>
+        <th>Payment Method</th>
+        <th>Total Payment</th>
+        <th>Therapist</th>
+        <th>Position</th>
+        <th>Address</th>
+        <th>Created</th>
+      </tr>
+      ${rows}
+    </table>
+  </body>
+</html>`
+
+      const blob = new Blob(["\ufeff", workbook], {
+        type: "application/vnd.ms-excel;charset=utf-8;",
+      })
+      const objectUrl = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      const today = formatDateKey(new Date())
+
+      link.href = objectUrl
+      link.download = `bookings-${today}.xls`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(objectUrl)
+
+      toast.success("Export Excel berhasil diunduh")
+    } catch (error) {
+      console.error(error)
+      toast.error("Gagal export data booking")
+    } finally {
+      setIsExporting(false)
+    }
+  }, [
+    availableLocations,
+    bookings,
+    dateFrom,
+    dateTo,
+    debouncedSearch,
+    locationFilter,
+    patientFilter,
+    patientLookup,
+    patientRecordLookup,
+    statusFilter,
+    therapistLookup,
+  ])
+
   const handleNextBookingStep = React.useCallback(async () => {
     const fields = bookingStepFields[bookingStep] ?? []
 
@@ -1047,6 +1195,15 @@ export function BookingDashboard() {
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleExportExcel}
+            disabled={isLoading || isExporting || bookings.length === 0}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {isExporting ? "Exporting..." : "Export Excel"}
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">

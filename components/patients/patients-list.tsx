@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Eye, MoreVertical, Search, Trash2 } from "lucide-react"
+import { Download, Eye, MoreVertical, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { type PatientRecord } from "@/lib/patients/schema"
@@ -32,6 +32,14 @@ type PatientListItem = PatientRecord & {
 
 const PAGE_SIZE = 8
 
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;")
+
 export function PatientsList() {
   const [items, setItems] = React.useState<PatientListItem[]>([])
   const [total, setTotal] = React.useState(0)
@@ -39,6 +47,7 @@ export function PatientsList() {
   const [search, setSearch] = React.useState("")
   const [debouncedSearch, setDebouncedSearch] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(true)
+  const [isExporting, setIsExporting] = React.useState(false)
 
   React.useEffect(() => {
     const handle = setTimeout(() => setDebouncedSearch(search), 400)
@@ -94,6 +103,102 @@ export function PatientsList() {
     }
   }
 
+  const handleExportExcel = React.useCallback(async () => {
+    if (total === 0) {
+      toast.error("Tidak ada data pasien untuk diexport")
+      return
+    }
+
+    try {
+      setIsExporting(true)
+
+      const params = new URLSearchParams({
+        q: debouncedSearch,
+        page: "1",
+        pageSize: String(Math.max(total, PAGE_SIZE)),
+        sort: "newest",
+      })
+
+      const res = await fetch(`/api/patients?${params.toString()}`)
+      if (!res.ok) {
+        throw new Error("Failed to export patients")
+      }
+
+      const data = await res.json()
+      const exportItems = (data.items ?? []) as PatientListItem[]
+
+      if (exportItems.length === 0) {
+        toast.error("Tidak ada data pasien untuk diexport")
+        return
+      }
+
+      const rows = exportItems
+        .map((patient, index) => {
+          const values = [
+            String(index + 1),
+            patient.id,
+            patient.fullName,
+            patient.phone,
+            patient.email || "-",
+            patient.complaint || "-",
+            String(patient.totalVisits ?? 0),
+            patient.upcoming ? formatDate(patient.upcoming) : "-",
+            formatDate(patient.createdAt),
+          ]
+
+          return `<tr>${values.map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`
+        })
+        .join("")
+
+      const workbook = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+  </head>
+  <body>
+    <table border="1">
+      <tr><th colspan="9">Patients Export</th></tr>
+      <tr><td colspan="9">Generated at: ${escapeHtml(formatDateTime(new Date().toISOString()))}</td></tr>
+      <tr><td colspan="9">Search: ${escapeHtml(debouncedSearch || "None")}</td></tr>
+      <tr>
+        <th>No</th>
+        <th>Patient ID</th>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Email</th>
+        <th>Complaint</th>
+        <th>Total Visits</th>
+        <th>Upcoming</th>
+        <th>Created</th>
+      </tr>
+      ${rows}
+    </table>
+  </body>
+</html>`
+
+      const blob = new Blob(["\ufeff", workbook], {
+        type: "application/vnd.ms-excel;charset=utf-8;",
+      })
+      const objectUrl = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      const today = new Date().toISOString().slice(0, 10)
+
+      link.href = objectUrl
+      link.download = `patients-${today}.xls`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(objectUrl)
+
+      toast.success("Export Excel pasien berhasil diunduh")
+    } catch (error) {
+      console.error(error)
+      toast.error("Gagal export data pasien")
+    } finally {
+      setIsExporting(false)
+    }
+  }, [debouncedSearch, total])
+
   return (
     <div className="space-y-6">
       <Card>
@@ -102,6 +207,15 @@ export function PatientsList() {
             <CardTitle>Patients</CardTitle>
             <CardDescription>Kelola data pasien dan riwayat kunjungan.</CardDescription>
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleExportExcel}
+            disabled={isLoading || isExporting || total === 0}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {isExporting ? "Exporting..." : "Export Excel"}
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -229,4 +343,13 @@ const formatDate = (value: string) =>
     day: "2-digit",
     month: "short",
     year: "numeric",
+  }).format(new Date(value))
+
+const formatDateTime = (value: string) =>
+  new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(new Date(value))
