@@ -314,8 +314,14 @@ export default function BookingForm() {
   )
 
   const availableTherapists = React.useMemo(() => {
-    return therapists
-  }, [therapists])
+    if (!watchedLocationId) {
+      return []
+    }
+
+    return therapists.filter((therapist) =>
+      schedulePairSet.has(`${watchedLocationId}:${therapist.id}`)
+    )
+  }, [schedulePairSet, therapists, watchedLocationId])
 
   const availableLocations = React.useMemo(() => {
     return locations
@@ -788,11 +794,15 @@ export default function BookingForm() {
                         </FieldContent>
                       </Field>
                       <Field>
-                        <FieldLabel>Therapist</FieldLabel>
+                          <FieldLabel>Therapist</FieldLabel>
                         <FieldContent>
-                          {availableTherapists.length === 0 ? (
+                          {!watchedLocationId ? (
                             <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                              No active therapist available.
+                              Select a position first.
+                            </div>
+                          ) : availableTherapists.length === 0 ? (
+                            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                              No therapist schedule is configured for this position yet.
                             </div>
                           ) : (
                             <Select

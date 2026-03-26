@@ -1,20 +1,10 @@
-import { type DayKey, type Schedule, type TimeRange } from "./schema"
+import { type Schedule, type TimeRange } from "./schema"
 
 type ExistingBooking = { startISO: string; endISO: string }
 
 type SlotDay = {
   date: string
   slots: { startISO: string; endISO: string }[]
-}
-
-const weekdayMap: Record<string, DayKey> = {
-  Mon: "mon",
-  Tue: "tue",
-  Wed: "wed",
-  Thu: "thu",
-  Fri: "fri",
-  Sat: "sat",
-  Sun: "sun",
 }
 
 const pad = (value: number) => String(value).padStart(2, "0")
@@ -83,12 +73,6 @@ const addDaysInZone = (dateKey: string, days: number, timeZone: string) => {
   return getDateKeyInZone(next, timeZone)
 }
 
-const getWeekdayKey = (dateKey: string, timeZone: string) => {
-  const date = zonedLocalToUtc(dateKey, "12:00", timeZone)
-  const { weekday } = getZonedParts(date, timeZone)
-  return weekdayMap[weekday]
-}
-
 const rangesOverlap = (aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) => {
   return aStart < bEnd && bStart < aEnd
 }
@@ -143,31 +127,16 @@ export function generateAvailableSlots({
     }
 
     const override = schedule.overrides.find((item) => item.date === currentKey)
-    let ranges: TimeRange[] = []
-
-    if (override) {
-      if (override.closed) {
-        results.push({ date: currentKey, slots: [] })
-        currentKey = addDaysInZone(currentKey, 1, timeZone)
-        if (currentKey === endKey && dayStartUtc > rangeEnd) {
-          break
-        }
-        continue
+    if (!override || override.closed) {
+      results.push({ date: currentKey, slots: [] })
+      currentKey = addDaysInZone(currentKey, 1, timeZone)
+      if (currentKey === endKey && dayStartUtc > rangeEnd) {
+        break
       }
-      ranges = override.ranges ?? []
-    } else {
-      const weekdayKey = getWeekdayKey(currentKey, timeZone)
-      const dayConfig = schedule.weekly[weekdayKey]
-      if (!dayConfig.enabled) {
-        results.push({ date: currentKey, slots: [] })
-        currentKey = addDaysInZone(currentKey, 1, timeZone)
-        if (currentKey === endKey && dayStartUtc > rangeEnd) {
-          break
-        }
-        continue
-      }
-      ranges = dayConfig.ranges
+      continue
     }
+
+    const ranges: TimeRange[] = override.ranges ?? []
 
     const sortedRanges = normalizeRanges(ranges)
     const slots: { startISO: string; endISO: string }[] = []

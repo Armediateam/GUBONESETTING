@@ -21,20 +21,9 @@ export async function readScheduleConfig(
 ): Promise<StoredScheduleRecord | null> {
   const schedules = await readSchedules()
 
-  const exactMatch =
-    schedules.find(
-      (item) => item.locationId === locationId && item.therapistId === therapistId
-    ) ?? null
-
-  if (exactMatch) {
-    return exactMatch
-  }
-
   return (
     schedules.find(
-      (item) =>
-        item.locationId === locationId &&
-        (item.therapistId === undefined || item.therapistId === "")
+      (item) => item.locationId === locationId && item.therapistId === therapistId
     ) ?? null
   )
 }
