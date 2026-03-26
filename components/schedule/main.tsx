@@ -287,6 +287,18 @@ export function ScheduleMain() {
     setSelectedTherapistId(therapists[0]?.id ?? null)
   }, [selectedTherapistId, therapists])
 
+  const selectedLocation = React.useMemo(
+    () => locations.find((location) => location.id === selectedLocationId) ?? null,
+    [locations, selectedLocationId]
+  )
+
+  const selectedTherapist = React.useMemo(
+    () => therapists.find((therapist) => therapist.id === selectedTherapistId) ?? null,
+    [therapists, selectedTherapistId]
+  )
+
+  const scopeReady = Boolean(selectedLocationId && selectedTherapistId)
+
   React.useEffect(() => {
     let active = true
 
@@ -457,39 +469,11 @@ export function ScheduleMain() {
     .filter((day) => (day.totalSlots ?? 0) > 0 && day.slots.length === 0)
     .map((day) => parseDateKey(day.date))
 
-  const SAVED_DATES_PAGE_SIZE = 8
-  const [savedDatesPage, setSavedDatesPage] = React.useState(1)
-
   const savedOverrides = React.useMemo(() => {
     return overridesArray.fields
       .map((override, index) => ({ override, index }))
-      .sort((a, b) => b.override.date.localeCompare(a.override.date))
+      .sort((a, b) => a.override.date.localeCompare(b.override.date))
   }, [overridesArray.fields])
-
-  const savedDatesTotalPages = Math.max(
-    1,
-    Math.ceil(savedOverrides.length / SAVED_DATES_PAGE_SIZE)
-  )
-  const savedDatesPageClamped = Math.min(Math.max(1, savedDatesPage), savedDatesTotalPages)
-
-  const savedOverridesPage = React.useMemo(() => {
-    const startIndex = (savedDatesPageClamped - 1) * SAVED_DATES_PAGE_SIZE
-    return savedOverrides.slice(startIndex, startIndex + SAVED_DATES_PAGE_SIZE)
-  }, [savedOverrides, savedDatesPageClamped])
-
-  React.useEffect(() => {
-    if (savedDatesPage !== savedDatesPageClamped) {
-      setSavedDatesPage(savedDatesPageClamped)
-    }
-  }, [savedDatesPage, savedDatesPageClamped])
-
-  React.useEffect(() => {
-    if (!selectedDateKey) return
-    const index = savedOverrides.findIndex((item) => item.override.date === selectedDateKey)
-    if (index === -1) return
-    const nextPage = Math.floor(index / SAVED_DATES_PAGE_SIZE) + 1
-    setSavedDatesPage((current) => (current === nextPage ? current : nextPage))
-  }, [savedOverrides, selectedDateKey])
 
   const addSelectedDate = () => {
     if (!selectedDateKey) return
@@ -544,6 +528,62 @@ export function ScheduleMain() {
 
   const removeOverride = (index: number) => {
     overridesArray.remove(index)
+  }
+
+  const handleDeleteSavedDate = async (index: number) => {
+    if (!selectedLocationId || !selectedTherapistId) {
+      toast.error("Pilih position dan therapist terlebih dulu")
+      return
+    }
+
+    const target = overridesArray.fields[index]
+    if (!target) {
+      return
+    }
+
+    const confirmed = window.confirm(`Hapus schedule tanggal ${target.date}?`)
+    if (!confirmed) return
+
+    try {
+      setIsSaving(true)
+      const current = normalizeEditableSchedule(form.getValues())
+      const nextOverrides = current.overrides.filter((_, itemIndex) => itemIndex !== index)
+      const payload = {
+        ...current,
+        overrides: nextOverrides,
+      }
+
+      const res = await fetch(
+        `/api/schedule?locationId=${selectedLocationId}&therapistId=${selectedTherapistId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      )
+
+      const responsePayload = await res.json()
+      if (!res.ok) {
+        toast.error(responsePayload?.message || "Failed to delete schedule")
+        return
+      }
+
+      const normalized = normalizeEditableSchedule(responsePayload as Schedule)
+      reset(normalized)
+      setSavedSchedule(normalized)
+      setLastSavedAt(new Date().toISOString())
+
+      if (selectedDateKey === target.date) {
+        setSelectedDate(undefined)
+      }
+
+      toast.success(`Schedule ${target.date} deleted`)
+    } catch (error) {
+      console.error(error)
+      toast.error("Server error")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const updateWeekendEnabled = (dayKey: WeekendDayKey, enabled: boolean) => {
@@ -613,6 +653,11 @@ export function ScheduleMain() {
             Schedule
           </p>
           <h1 className="text-xl font-semibold">Date-based availability</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {scopeReady
+              ? `Editing schedule for ${selectedLocation?.city ?? selectedLocation?.name ?? "Position"} / ${selectedTherapist?.name ?? "Therapist"}`
+              : "Select position and therapist first to manage a schedule."}
+          </p>
         </div>
         <div className="flex w-full flex-col gap-2 md:items-end lg:w-auto lg:flex-row lg:items-center lg:justify-end">
           <div className="text-xs text-muted-foreground md:text-sm md:text-right lg:whitespace-nowrap">
@@ -697,7 +742,8 @@ export function ScheduleMain() {
                     </Field>
                   </div>
                   <div className="mt-3 text-xs text-muted-foreground">
-                    Schedule berlaku untuk kombinasi position + therapist yang dipilih.
+                    Schedule disimpan per kombinasi position + therapist. Ganti location jika ingin
+                    mengatur jam yang berbeda untuk cabang lain.
                   </div>
                 </div>
               </div>
@@ -736,6 +782,7 @@ export function ScheduleMain() {
                     selected={selectedDate}
                     onSelect={setSelectedDate}
                     onMonthChange={setCalendarMonth}
+                    disabled={!scopeReady}
                     modifiers={{
                       hasOverride: overrideDates,
                       available: availableCalendarDates,
@@ -754,6 +801,7 @@ export function ScheduleMain() {
                     selected={selectedRange}
                     onSelect={setSelectedRange}
                     onMonthChange={setCalendarMonth}
+                    disabled={!scopeReady}
                     modifiers={{
                       hasOverride: overrideDates,
                       available: availableCalendarDates,
@@ -767,10 +815,12 @@ export function ScheduleMain() {
                     className="rounded-lg border"
                   />
                 )}
-                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                  {overrideSelectionMode === "single"
-                    ? "Select a date to add or edit hours."
-                    : "Select a date range to apply hours to multiple dates."}
+                  <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  {!scopeReady
+                    ? "Choose position and therapist first."
+                    : overrideSelectionMode === "single"
+                      ? "Select a date to add or edit hours."
+                      : "Select a date range to apply hours to multiple dates."}
                 </div>
               </div>
               <div className="space-y-4">
@@ -796,7 +846,7 @@ export function ScheduleMain() {
                           type="button"
                           size="sm"
                           onClick={addSelectedDate}
-                          disabled={!selectedDateKey || selectedOverrideIndex !== -1}
+                          disabled={!scopeReady || !selectedDateKey || selectedOverrideIndex !== -1}
                         >
                           <Plus className="mr-2 h-4 w-4" />
                           Add Date
@@ -958,7 +1008,10 @@ export function ScheduleMain() {
                         type="button"
                         onClick={applySelectedRange}
                         disabled={
-                          !selectedRange?.from || !selectedRange?.to || !!rangeTemplateError
+                          !scopeReady ||
+                          !selectedRange?.from ||
+                          !selectedRange?.to ||
+                          !!rangeTemplateError
                         }
                       >
                         <Plus className="mr-2 h-4 w-4" />
@@ -974,92 +1027,105 @@ export function ScheduleMain() {
           <Card>
             <CardHeader>
               <CardTitle>Saved dates</CardTitle>
-              <CardDescription>Manage all date-specific hours.</CardDescription>
+              <CardDescription>
+                {scopeReady
+                  ? `Manage all date-specific hours for ${selectedLocation?.city ?? selectedLocation?.name ?? "Position"} / ${selectedTherapist?.name ?? "Therapist"}.`
+                  : "Select position and therapist to see saved date-specific hours."}
+              </CardDescription>
             </CardHeader>
-             <CardContent className="space-y-3">
-               {overridesArray.fields.length === 0 ? (
-                 <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                   No dates configured yet.
-                 </div>
-               ) : (
-                  <div className="space-y-3">
-                    {savedOverridesPage.map(({ override, index }) => (
+            <CardContent className="space-y-3">
+              {!scopeReady ? (
+                <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                  Pilih location dan therapist dulu untuk membuka schedule.
+                </div>
+              ) : overridesArray.fields.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                  No dates configured yet.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="text-sm text-muted-foreground">
+                    Total saved dates: {savedOverrides.length}
+                  </div>
+                  <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                    {savedOverrides.map(({ override, index }) => (
                       <div
                         key={override.id}
                         className={cn(
-                          "flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between",
+                          "rounded-lg border p-4",
                           override.date === selectedDateKey && "border-primary/60 bg-muted/40"
                         )}
                       >
-                        <div>
-                          <div className="text-sm font-medium">{override.date}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {override.closed ? "Closed" : `${override.ranges?.length || 0} ranges`}
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="space-y-2">
+                            <div>
+                              <div className="text-sm font-medium">{override.date}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatDateLabel(
+                                  override.date,
+                                  scheduleWatch?.timezone ?? "Asia/Jakarta"
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant={override.closed ? "outline" : "secondary"}>
+                                {override.closed ? "Closed all day" : "Open"}
+                              </Badge>
+                              {!override.closed ? (
+                                <span className="text-xs text-muted-foreground">
+                                  {override.ranges?.length || 0} range
+                                  {(override.ranges?.length || 0) > 1 ? "s" : ""}
+                                </span>
+                              ) : null}
+                            </div>
+                            {!override.closed && (override.ranges?.length ?? 0) > 0 ? (
+                              <div className="flex flex-wrap gap-2">
+                                {(override.ranges ?? []).map((range, rangeIndex) => (
+                                  <div
+                                    key={`${override.date}-${range.start}-${range.end}-${rangeIndex}`}
+                                    className="rounded-md border bg-muted/30 px-2 py-1 text-xs"
+                                  >
+                                    {range.start} - {range.end}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setOverrideSelectionMode("single")
-                              setSelectedRange(undefined)
-                              setSelectedDate(parseDateKey(override.date))
-                            }}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeOverride(index)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setOverrideSelectionMode("single")
+                                setSelectedRange(undefined)
+                                setSelectedDate(parseDateKey(override.date))
+                              }}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteSavedDate(index)}
+                              disabled={isSaving}
+                              aria-label={`Delete saved date ${override.date}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
-
-                    {savedOverrides.length > SAVED_DATES_PAGE_SIZE ? (
-                      <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="text-xs text-muted-foreground">
-                          Page {savedDatesPageClamped} of {savedDatesTotalPages}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSavedDatesPage((prev) => Math.max(1, prev - 1))}
-                            disabled={savedDatesPageClamped <= 1}
-                          >
-                            Previous
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              setSavedDatesPage((prev) =>
-                                Math.min(savedDatesTotalPages, prev + 1)
-                              )
-                            }
-                            disabled={savedDatesPageClamped >= savedDatesTotalPages}
-                          >
-                            Next
-                          </Button>
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
-                )}
-                {errors.overrides &&
-                  "message" in errors.overrides &&
-                  errors.overrides.message && (
-                  <FieldError errors={[{ message: errors.overrides.message }]} />
-                )}
+                </div>
+              )}
+              {errors.overrides &&
+                "message" in errors.overrides &&
+                errors.overrides.message && (
+                <FieldError errors={[{ message: errors.overrides.message }]} />
+              )}
             </CardContent>
           </Card>
         </div>
