@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server"
 import { jwtVerify } from "jose"
 
 const isPublicPath = (pathname: string) => {
-  return pathname === "/login" || pathname === "/setup" || pathname.startsWith("/api/auth")
+  return pathname === "/login" || pathname.startsWith("/api/auth")
 }
 
 export async function proxy(request: NextRequest) {

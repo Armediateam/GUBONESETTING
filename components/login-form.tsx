@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -11,7 +10,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -99,11 +97,6 @@ export function LoginForm({
             </FieldGroup>
           </form>
         </CardContent>
-        <CardFooter>
-          <p className="text-muted-foreground text-sm">
-            Belum ada akun pertama? <Link className="underline underline-offset-4" href="/setup">Buat di sini</Link>
-          </p>
-        </CardFooter>
       </Card>
     </div>
   )
