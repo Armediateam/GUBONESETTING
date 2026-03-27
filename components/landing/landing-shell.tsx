@@ -15,12 +15,12 @@ export function LandingShell({ children }: { children: React.ReactNode }) {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-zinc-100 to-transparent" />
 
         <header className="relative z-10 px-4 pt-5 sm:px-6 md:px-12">
-          <nav className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 rounded-full border border-black/10 bg-white/85 px-5 py-3 backdrop-blur-xl">
+          <nav className="mx-auto flex max-w-7xl flex-col gap-4 rounded-[2rem] border border-black/10 bg-white/85 px-4 py-4 backdrop-blur-xl sm:px-5 lg:flex-row lg:items-center lg:justify-between lg:rounded-full lg:py-3">
             <Link href="/" className="text-sm font-semibold text-black">
               GU BONE SETTING
             </Link>
 
-            <div className="hidden items-center gap-5 text-sm font-medium text-black/60 md:flex">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium text-black/60 lg:justify-center">
               {navigation.map((item) => (
                 <Link key={item.href} href={item.href} className="transition-colors hover:text-black">
                   {item.label}
@@ -28,16 +28,16 @@ export function LandingShell({ children }: { children: React.ReactNode }) {
               ))}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:justify-end">
               <Link
                 href="/#contact"
-                className="rounded-full border border-black/10 px-4 py-2 text-sm font-semibold text-black/70 transition-colors hover:bg-zinc-100 hover:text-black"
+                className="rounded-full border border-black/10 px-4 py-2 text-center text-sm font-semibold text-black/70 transition-colors hover:bg-zinc-100 hover:text-black"
               >
                 Konsultasi
               </Link>
               <Link
                 href="/booking"
-                className="rounded-full bg-black px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-black/85"
+                className="rounded-full bg-black px-4 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-black/85"
               >
                 Booking Sekarang
               </Link>
@@ -52,7 +52,7 @@ export function LandingShell({ children }: { children: React.ReactNode }) {
         id="contact"
         className="border-t border-black/10 bg-zinc-50 px-4 py-10 sm:px-6 md:px-12"
       >
-        <div className="mx-auto grid max-w-7xl gap-10 md:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,0.6fr))]">
+        <div className="mx-auto grid max-w-7xl gap-10 md:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,0.6fr))]">
           <div className="max-w-sm">
             <div className="text-sm font-semibold">GU BONE SETTING</div>
             <p className="mt-4 text-sm leading-7 text-black/65">

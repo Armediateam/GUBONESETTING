@@ -151,10 +151,10 @@ export function DashboardHome() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6">
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-5 xl:p-6">
       <div className="rounded-2xl border bg-gradient-to-br from-muted/40 via-background to-muted/10 p-5">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="w-full md:flex-1">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="w-full lg:flex-1">
             <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground">
               Dashboard
             </p>
@@ -171,7 +171,7 @@ export function DashboardHome() {
                   : "Select a position to see the summary"}
             </p>
           </div>
-          <div className="w-full max-w-[240px] md:w-auto md:shrink-0">
+          <div className="w-full lg:w-[260px] lg:shrink-0">
             <Select
               value={dashboardLocationId}
               onValueChange={(value) => setDashboardLocationId(value)}
@@ -192,7 +192,7 @@ export function DashboardHome() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
         {loading || !data ? (
           Array.from({ length: 4 }).map((_, index) => (
             <Skeleton key={index} className="h-28 w-full" />
@@ -224,12 +224,12 @@ export function DashboardHome() {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <CardHeader className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <CardTitle>Quick Actions</CardTitle>
             <CardDescription>Shortcut ke tugas admin yang sering digunakan.</CardDescription>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex flex-col gap-2 md:flex-row">
             <Button asChild variant="outline">
               <Link href="/bookings">
                 <CalendarPlus className="mr-2 h-4 w-4" />
@@ -246,7 +246,7 @@ export function DashboardHome() {
         </CardHeader>
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+      <div className="grid gap-4 2xl:grid-cols-[1.4fr_1fr]">
         <Card>
           <CardHeader>
             <CardTitle>Recent Bookings</CardTitle>

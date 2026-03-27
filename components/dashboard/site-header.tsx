@@ -47,13 +47,13 @@ export function SiteHeader() {
     .filter((segment) => segment !== "dashboard")
 
   return (
-    <header className="flex h-[var(--header-height)] items-center border-b">
-      <div className="flex w-full items-center gap-2 px-4 lg:px-6">
+    <header className="border-b">
+      <div className="flex min-h-[var(--header-height)] w-full flex-wrap items-center gap-2 px-4 py-2 lg:px-6">
         <SidebarTrigger className="-ml-1" />
 
         {/* ===== Breadcrumb ===== */}
-        <Breadcrumb>
-          <BreadcrumbList>
+        <Breadcrumb className="min-w-0 flex-1">
+          <BreadcrumbList className="min-w-0">
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Link href="/">Dashboard</Link>
@@ -85,8 +85,8 @@ export function SiteHeader() {
         </Breadcrumb>
 
         {/* ===== Right Area ===== */}
-        <div className="ml-auto flex items-center gap-3">
-          <div className="flex items-center gap-2 px-2 py-1.5 text-sm font-medium">
+        <div className="ml-auto flex items-center gap-3 sm:pl-4">
+          <div className="hidden items-center gap-2 px-2 py-1.5 text-sm font-medium md:flex">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className="min-w-[4.75rem] tabular-nums" suppressHydrationWarning>
               {time ?? "--:--:--"}

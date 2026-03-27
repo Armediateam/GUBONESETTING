@@ -202,7 +202,7 @@ export function PatientsList() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <CardHeader className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <CardTitle>Patients</CardTitle>
             <CardDescription>Kelola data pasien dan riwayat kunjungan.</CardDescription>
@@ -210,6 +210,7 @@ export function PatientsList() {
           <Button
             type="button"
             variant="outline"
+            className="w-full sm:w-auto"
             onClick={handleExportExcel}
             disabled={isLoading || isExporting || total === 0}
           >
@@ -218,8 +219,8 @@ export function PatientsList() {
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative w-full max-w-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full lg:max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
@@ -309,14 +310,15 @@ export function PatientsList() {
             </div>
           )}
 
-          <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
-            <div className="text-sm text-muted-foreground">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-muted-foreground sm:text-left">
               Page {page} of {totalPages}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full items-center gap-2 sm:w-auto">
               <Button
                 variant="outline"
                 size="sm"
+                className="flex-1 sm:flex-none"
                 onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                 disabled={page <= 1}
               >
@@ -325,6 +327,7 @@ export function PatientsList() {
               <Button
                 variant="outline"
                 size="sm"
+                className="flex-1 sm:flex-none"
                 onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
                 disabled={page >= totalPages}
               >

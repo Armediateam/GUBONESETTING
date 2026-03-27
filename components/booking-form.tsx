@@ -683,17 +683,17 @@ export default function BookingForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-3xl shadow-sm">
+    <div className="flex min-h-screen items-start justify-center bg-muted/40 px-4 py-6 sm:py-8 lg:items-center">
+      <Card className="w-full max-w-4xl shadow-sm">
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <input type="hidden" {...form.register("locationId")} />
           <input type="hidden" {...form.register("therapistId")} />
           <input type="hidden" {...form.register("dateKey")} />
           <input type="hidden" {...form.register("slotStartISO")} />
           <input type="hidden" {...form.register("slotEndISO")} />
-          <CardHeader>
+          <CardHeader className="space-y-3">
             <CardTitle>Create Booking</CardTitle>
-            <CardDescription>
+            <CardDescription className="max-w-2xl">
               Lengkapi data pasien, pilih lokasi & therapist, tentukan jadwal, lalu lanjut ke pembayaran.
             </CardDescription>
             <div className="mt-3 flex gap-2">
@@ -718,7 +718,7 @@ export default function BookingForm() {
             ) : (
               <>
                 {step === 1 && (
-                  <div className="rounded-xl border bg-muted/30 p-4">
+                  <div className="rounded-xl border bg-muted/30 p-4 sm:p-5">
                     <div className="mb-3 text-sm font-medium">Patient details</div>
                     <FieldGroup>
                       <Field>
@@ -728,7 +728,7 @@ export default function BookingForm() {
                           <FieldError errors={[form.formState.errors.fullName]} />
                         </FieldContent>
                       </Field>
-                      <div className="grid gap-4 md:grid-cols-2">
+                      <div className="grid gap-4 xl:grid-cols-2">
                         <Field>
                           <FieldLabel>Phone Number</FieldLabel>
                           <FieldContent>
@@ -763,7 +763,7 @@ export default function BookingForm() {
                 )}
 
                 {step === 2 && (
-                  <div className="rounded-xl border bg-muted/30 p-4">
+                  <div className="rounded-xl border bg-muted/30 p-4 sm:p-5">
                     <div className="mb-3 text-sm font-medium">Service & therapist</div>
                     <FieldGroup>
                       <Field>
@@ -875,7 +875,7 @@ export default function BookingForm() {
                 )}
 
                 {step === 3 && (
-                  <div className="rounded-xl border bg-muted/30 p-4">
+                  <div className="rounded-xl border bg-muted/30 p-4 sm:p-5">
                     <div className="mb-3 text-sm font-medium">Schedule</div>
                     <FieldGroup>
                       <Field>
@@ -897,7 +897,7 @@ export default function BookingForm() {
                                     : "Select date"}
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
+                            <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] overflow-auto p-0" align="start">
                               <Calendar
                                 mode="single"
                                 selected={selectedDate}
@@ -971,31 +971,31 @@ export default function BookingForm() {
                 )}
 
                 {step === 4 && (
-                  <div className="rounded-xl border bg-muted/30 p-4">
+                  <div className="rounded-xl border bg-muted/30 p-4 sm:p-5">
                     <div className="mb-3 text-sm font-medium">Payment</div>
-                    <div className="space-y-4">
+                    <div className="grid gap-4 xl:grid-cols-2">
                       <div className="rounded-lg border bg-background p-4">
                         <div className="mb-3 text-sm font-medium">Booking summary</div>
                         <div className="space-y-2 text-sm">
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                             <span className="text-muted-foreground">Service</span>
-                            <span>{selectedService?.name ?? "-"}</span>
+                            <span className="sm:text-right">{selectedService?.name ?? "-"}</span>
                           </div>
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                             <span className="text-muted-foreground">Therapist</span>
-                            <span>{selectedTherapist?.name ?? "-"}</span>
+                            <span className="sm:text-right">{selectedTherapist?.name ?? "-"}</span>
                           </div>
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                             <span className="text-muted-foreground">Position</span>
-                            <span>
+                            <span className="sm:text-right">
                               {locations.find((item) => item.id === watchedLocationId)?.city ??
                                 locations.find((item) => item.id === watchedLocationId)?.name ??
                                 "-"}
                             </span>
                           </div>
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                             <span className="text-muted-foreground">Schedule</span>
-                            <span>
+                            <span className="sm:text-right">
                               {selectedDate
                                 ? `${formatDateLabel(selectedDate)} ${form.getValues("slotStartISO") ? `, ${formatTime(form.getValues("slotStartISO"), slots?.timeZone)}` : ""}`
                                 : "-"}
@@ -1007,40 +1007,40 @@ export default function BookingForm() {
                       <div className="rounded-lg border bg-background p-4">
                         <div className="mb-3 text-sm font-medium">Payment summary</div>
                         <div className="space-y-2 text-sm">
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                             <span className="text-muted-foreground">Service price</span>
-                            <span>{formatCurrency(paymentBreakdown.subtotalAmount)}</span>
+                            <span className="sm:text-right">{formatCurrency(paymentBreakdown.subtotalAmount)}</span>
                           </div>
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                             <span className="text-muted-foreground">
                               PPN {paymentBreakdown.taxPercent}%
                             </span>
-                            <span>{formatCurrency(paymentBreakdown.taxAmount)}</span>
+                            <span className="sm:text-right">{formatCurrency(paymentBreakdown.taxAmount)}</span>
                           </div>
-                          <div className="flex items-center justify-between gap-3 border-t pt-2 text-base font-semibold">
+                          <div className="flex flex-col gap-1 border-t pt-2 text-base font-semibold sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                             <span>Total</span>
-                            <span>{formatCurrency(paymentBreakdown.totalAmount)}</span>
+                            <span className="sm:text-right">{formatCurrency(paymentBreakdown.totalAmount)}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground xl:col-span-2">
                         Pembayaran akan diproses melalui Midtrans Snap. Setelah booking dibuat,
                         popup pembayaran akan terbuka otomatis.
                       </div>
 
                       {!midtransEnabled ? (
-                        <div className="rounded-lg border border-dashed p-4 text-sm text-destructive">
+                        <div className="rounded-lg border border-dashed p-4 text-sm text-destructive xl:col-span-2">
                           Midtrans belum dikonfigurasi di environment ini.
                         </div>
                       ) : !midtransReady ? (
-                        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground xl:col-span-2">
                           Loading Midtrans payment dialog...
                         </div>
                       ) : null}
 
                       {createdBookingId && activePaymentToken ? (
-                        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground xl:col-span-2">
                           Booking sudah dibuat dan menunggu pembayaran. Klik tombol di bawah
                           untuk membuka kembali popup Midtrans.
                         </div>
@@ -1052,10 +1052,11 @@ export default function BookingForm() {
             )}
           </CardContent>
 
-          <CardFooter className="flex w-full justify-between">
+          <CardFooter className="flex w-full flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Button
               type="button"
               variant="outline"
+              className="w-full sm:w-auto"
               disabled={Boolean(createdBookingId) || isProcessingPayment}
               onClick={() => {
                 if (step === 1) {
@@ -1070,6 +1071,7 @@ export default function BookingForm() {
             {step < 4 && (
               <Button
                 type="button"
+                className="w-full sm:w-auto"
                 onClick={() => setStep(step + 1)}
                 disabled={
                   loading ||
@@ -1085,6 +1087,7 @@ export default function BookingForm() {
             {step === 4 && (
               <Button
                 type="submit"
+                className="w-full sm:w-auto"
                 disabled={
                   form.formState.isSubmitting ||
                   loading ||

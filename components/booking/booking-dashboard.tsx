@@ -37,6 +37,7 @@ import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Table,
   TableBody,
@@ -254,6 +255,27 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value)
 
+const buildBookingUpdatePayload = (
+  booking: BookingRecord,
+  overrides: Partial<BookingRecord> = {}
+) => ({
+  patientId: overrides.patientId ?? booking.patientId,
+  locationId: overrides.locationId ?? booking.locationId,
+  therapistId: overrides.therapistId ?? booking.therapistId,
+  serviceId: overrides.serviceId ?? booking.serviceId,
+  serviceName: overrides.serviceName ?? booking.serviceName,
+  servicePrice: overrides.servicePrice ?? booking.servicePrice,
+  complaint: overrides.complaint ?? booking.complaint,
+  startISO: overrides.startISO ?? booking.startISO,
+  endISO: overrides.endISO ?? booking.endISO,
+  status: overrides.status ?? booking.status,
+  paymentStatus: overrides.paymentStatus ?? booking.paymentStatus,
+  payment: overrides.payment ?? booking.payment,
+  locationName: overrides.locationName ?? booking.locationName,
+  locationAddress: overrides.locationAddress ?? booking.locationAddress,
+  therapistName: overrides.therapistName ?? booking.therapistName,
+})
+
 const escapeHtml = (value: string) =>
   value
     .replaceAll("&", "&amp;")
@@ -296,6 +318,12 @@ export function BookingDashboard() {
   const [rescheduleSlotLoading, setRescheduleSlotLoading] = React.useState(false)
   const [rescheduleSlotStartISO, setRescheduleSlotStartISO] = React.useState("")
   const [rescheduleSlotEndISO, setRescheduleSlotEndISO] = React.useState("")
+  const [complaintEditOpen, setComplaintEditOpen] = React.useState(false)
+  const [complaintEditBooking, setComplaintEditBooking] = React.useState<BookingRecord | null>(
+    null
+  )
+  const [complaintEditValue, setComplaintEditValue] = React.useState("")
+  const [complaintEditSaving, setComplaintEditSaving] = React.useState(false)
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>()
   const [calendarMonth, setCalendarMonth] = React.useState<Date>(new Date())
   const [search, setSearch] = React.useState("")
@@ -819,6 +847,12 @@ export function BookingDashboard() {
     setRescheduleOpen(true)
   }
 
+  const handleOpenComplaintEdit = (booking: BookingRecord) => {
+    setComplaintEditBooking(booking)
+    setComplaintEditValue(booking.complaint ?? "")
+    setComplaintEditOpen(true)
+  }
+
   const handleRescheduleSave = async () => {
     if (!rescheduleBooking || !rescheduleSlotStartISO || !rescheduleSlotEndISO) {
       toast.error("Select a date and slot")
@@ -828,15 +862,12 @@ export function BookingDashboard() {
       const res = await fetch(`/api/bookings/${rescheduleBooking.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          patientId: rescheduleBooking.patientId,
-          locationId: rescheduleBooking.locationId,
-          therapistId: rescheduleBooking.therapistId,
-          serviceName: rescheduleBooking.serviceName,
-          complaint: rescheduleBooking.complaint,
-          startISO: rescheduleSlotStartISO,
-          endISO: rescheduleSlotEndISO,
-        }),
+        body: JSON.stringify(
+          buildBookingUpdatePayload(rescheduleBooking, {
+            startISO: rescheduleSlotStartISO,
+            endISO: rescheduleSlotEndISO,
+          })
+        ),
       })
       const payload = await res.json()
       if (!res.ok) {
@@ -853,6 +884,41 @@ export function BookingDashboard() {
     } catch (error) {
       console.error(error)
       toast.error("Server error")
+    }
+  }
+
+  const handleComplaintSave = async () => {
+    if (!complaintEditBooking) {
+      return
+    }
+
+    setComplaintEditSaving(true)
+    try {
+      const res = await fetch(`/api/bookings/${complaintEditBooking.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          buildBookingUpdatePayload(complaintEditBooking, {
+            complaint: complaintEditValue.trim(),
+          })
+        ),
+      })
+      const payload = await res.json()
+      if (!res.ok) {
+        toast.error(payload?.message || "Failed to update complaint")
+        return
+      }
+
+      toast.success("Complaint updated")
+      setComplaintEditOpen(false)
+      setComplaintEditBooking(null)
+      setComplaintEditValue("")
+      await fetchBookings()
+    } catch (error) {
+      console.error(error)
+      toast.error("Server error")
+    } finally {
+      setComplaintEditSaving(false)
     }
   }
 
@@ -1439,6 +1505,9 @@ export function BookingDashboard() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleOpenComplaintEdit(booking)}>
+                          Edit complaint
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleOpenReschedule(booking)}>
                           Reschedule
                         </DropdownMenuItem>
@@ -2016,6 +2085,48 @@ export function BookingDashboard() {
             </Button>
             <Button type="button" onClick={handleRescheduleSave}>
               Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={complaintEditOpen}
+        onOpenChange={(open) => {
+          setComplaintEditOpen(open)
+          if (!open) {
+            setComplaintEditBooking(null)
+            setComplaintEditValue("")
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Complaint</DialogTitle>
+            <DialogDescription>Perbarui isi complaint untuk booking ini.</DialogDescription>
+          </DialogHeader>
+          <Field>
+            <FieldLabel>Complaint</FieldLabel>
+            <FieldContent>
+              <Textarea
+                value={complaintEditValue}
+                onChange={(event) => setComplaintEditValue(event.target.value)}
+                placeholder="Describe the complaint"
+                rows={5}
+              />
+            </FieldContent>
+          </Field>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setComplaintEditOpen(false)}
+              disabled={complaintEditSaving}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleComplaintSave} disabled={complaintEditSaving}>
+              {complaintEditSaving ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>

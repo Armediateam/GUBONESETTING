@@ -160,8 +160,8 @@ export function LocationsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6">
-      <div className="flex flex-col gap-3 rounded-xl border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-5 xl:p-6">
+      <div className="flex flex-col gap-3 rounded-xl border bg-background p-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h1 className="text-xl font-semibold">Business Position</h1>
           <p className="text-sm text-muted-foreground">
@@ -170,6 +170,7 @@ export function LocationsPage() {
           </p>
         </div>
         <Button
+          className="w-full sm:w-auto"
           onClick={() => {
             setEditing(null)
             form.reset({

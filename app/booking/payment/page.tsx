@@ -34,7 +34,7 @@ export default async function BookingPaymentPage({
   const content = paymentCopy[status]
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+    <div className="flex min-h-screen items-start justify-center bg-muted/40 px-4 py-6 sm:py-8 lg:items-center">
       <Card className="w-full max-w-lg shadow-sm">
         <CardHeader>
           <CardTitle>{content.title}</CardTitle>
@@ -46,7 +46,7 @@ export default async function BookingPaymentPage({
               Booking ID: {params.bookingId}
             </div>
           ) : null}
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <Button asChild>
               <Link href="/booking">{content.actionLabel}</Link>
             </Button>
